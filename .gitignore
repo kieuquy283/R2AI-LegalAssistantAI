@@ -40,6 +40,9 @@ manifest.json
 # Generated data snapshots
 runtime_data/
 data/submissions/
+data/chat_sessions.json
+data/retrieval_corpus.json
+data/processed/articles.jsonl
 
 # Frontend install artifacts
 legacy/chatRAG/node_modules/
