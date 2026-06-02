@@ -1,0 +1,9 @@
+retrieval:
+  pipeline_mode: adaptive
+  top_k: 5
+  candidate_k: 20
+  embedding_model: intfloat/multilingual-e5-base
+  index_path: data/indexes/default
+  corpus_path: data/processed/articles.jsonl
+  chunk_size: 1000
+  chunk_overlap: 200

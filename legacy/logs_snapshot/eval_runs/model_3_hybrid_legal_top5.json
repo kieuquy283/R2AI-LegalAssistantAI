@@ -1,0 +1,4047 @@
+{
+  "metrics": {
+    "model_name": "model_3_hybrid_retrieval",
+    "description": "Hybrid retrieval using the original question with dense FAISS + sparse BM25 fusion. No rewrite, no history selection, no multi-query, no reranking, no answer generation.",
+    "eval_path": "data/multiturn_evaluation_legal.json",
+    "index_dir": "indexes/legal",
+    "corpus_path": "data/legal_corpus_chunks.json",
+    "top_k": 5,
+    "dense_weight": 0.6,
+    "sparse_weight": 0.4,
+    "samples": 212,
+    "hit@5": 0.8066037735849056,
+    "recall@5": 0.8066037735849056,
+    "mrr": 0.6437106918238993,
+    "avg_latency_seconds": 0.07632621462244918
+  },
+  "samples": [
+    {
+      "sample_id": "legal_vbhq_0000",
+      "question": "Luật này có những quy định nào chung?",
+      "query_used": "Luật này có những quy định nào chung?",
+      "ground_truth_cids": [
+        "54_VBHN_khác"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_1",
+        "54_VBHN_khác",
+        "54_VBHN_điều_3",
+        "63_VBHN_điều_1",
+        "63_VBHN_điều_21"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.10493160001351498
+    },
+    {
+      "sample_id": "legal_vbhq_0001",
+      "question": "Còn về phạm vi không áp dụng, văn bản nào sẽ không thuộc phạm vi điều chỉnh của luật này?",
+      "query_used": "Còn về phạm vi không áp dụng, văn bản nào sẽ không thuộc phạm vi điều chỉnh của luật này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_1"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_1",
+        "63_VBHN_điều_1",
+        "54_VBHN_điều_54",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_8"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.09366710000904277
+    },
+    {
+      "sample_id": "legal_vbhq_0002",
+      "question": "Nếu văn bản đó không được ban hành đúng thẩm quyền thì có còn được coi là văn bản quy phạm pháp luật không?",
+      "query_used": "Nếu văn bản đó không được ban hành đúng thẩm quyền thì có còn được coi là văn bản quy phạm pháp luật không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_2"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_2",
+        "54_VBHN_điều_8",
+        "54_VBHN_điều_63",
+        "54_VBHN_điều_57",
+        "54_VBHN_điều_61"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.19315190002089366
+    },
+    {
+      "sample_id": "legal_vbhq_0003",
+      "question": "Ngoài ra, điều gì được coi là chính sách trong bối cảnh này?",
+      "query_used": "Ngoài ra, điều gì được coi là chính sách trong bối cảnh này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_3"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_28",
+        "54_VBHN_điều_29",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_3",
+        "63_VBHN_điều_7"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.1577370000013616
+    },
+    {
+      "sample_id": "legal_vbhq_0004",
+      "question": "Vậy thì các văn bản quy phạm pháp luật cấp tỉnh có quy định nào khác không?",
+      "query_used": "Vậy thì các văn bản quy phạm pháp luật cấp tỉnh có quy định nào khác không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_4"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_63",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_4",
+        "54_VBHN_điều_55",
+        "54_VBHN_điều_2"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.3058479000173975
+    },
+    {
+      "sample_id": "legal_vbhq_0005",
+      "question": "Ngoài nguyên tắc đó, quy định nào trong văn bản này yêu cầu phải bảo vệ quyền con người?",
+      "query_used": "Ngoài nguyên tắc đó, quy định nào trong văn bản này yêu cầu phải bảo vệ quyền con người?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_5"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_5",
+        "54_VBHN_điều_10",
+        "54_VBHN_khác",
+        "63_VBHN_điều_64",
+        "63_VBHN_điều_134"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.2178596000012476
+    },
+    {
+      "sample_id": "legal_vbhq_0006",
+      "question": "Vậy trong quá trình này, những ai có quyền tham gia góp ý kiến về chính sách và dự thảo văn bản quy phạm pháp luật?",
+      "query_used": "Vậy trong quá trình này, những ai có quyền tham gia góp ý kiến về chính sách và dự thảo văn bản quy phạm pháp luật?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_6"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_6",
+        "54_VBHN_điều_68",
+        "54_VBHN_điều_33",
+        "54_VBHN_điều_51",
+        "54_VBHN_điều_27"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.10090980000677519
+    },
+    {
+      "sample_id": "legal_vbhq_0007",
+      "question": "Nếu muốn dịch văn bản đó ra tiếng dân tộc thiểu số thì có quy định gì không?",
+      "query_used": "Nếu muốn dịch văn bản đó ra tiếng dân tộc thiểu số thì có quy định gì không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_7"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_7",
+        "54_VBHN_điều_60",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_6",
+        "54_VBHN_điều_9"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08078089999617077
+    },
+    {
+      "sample_id": "legal_vbhq_0008",
+      "question": "Trong trường hợp nào thì văn bản quy phạm pháp luật có thể bị bãi bỏ?",
+      "query_used": "Trong trường hợp nào thì văn bản quy phạm pháp luật có thể bị bãi bỏ?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_8"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_8",
+        "54_VBHN_điều_57",
+        "54_VBHN_điều_54",
+        "54_VBHN_điều_55",
+        "54_VBHN_điều_2"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07835999998496845
+    },
+    {
+      "sample_id": "legal_vbhq_0009",
+      "question": "Vậy văn bản nào cần đăng tải trên công báo điện tử nước Cộng hòa xã hội chủ nghĩa Việt Nam?",
+      "query_used": "Vậy văn bản nào cần đăng tải trên công báo điện tử nước Cộng hòa xã hội chủ nghĩa Việt Nam?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_9"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_9",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_5",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_57"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08161680001649074
+    },
+    {
+      "sample_id": "legal_vbhq_0010",
+      "question": "Đối với nghị quyết thì Quốc hội có những quy định gì thêm không?",
+      "query_used": "Đối với nghị quyết thì Quốc hội có những quy định gì thêm không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_10"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_43",
+        "54_VBHN_điều_36",
+        "54_VBHN_điều_11",
+        "54_VBHN_điều_32",
+        "54_VBHN_điều_40"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07561420000274666
+    },
+    {
+      "sample_id": "legal_vbhq_0011",
+      "question": "Vậy nghị quyết này sẽ quy định về những vấn đề gì cụ thể?",
+      "query_used": "Vậy nghị quyết này sẽ quy định về những vấn đề gì cụ thể?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_11"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_14",
+        "54_VBHN_điều_13",
+        "54_VBHN_điều_10",
+        "54_VBHN_điều_15",
+        "54_VBHN_điều_16"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07393469999078661
+    },
+    {
+      "sample_id": "legal_vbhq_0012",
+      "question": "Vậy trong trường hợp khẩn cấp, quy định này sẽ được áp dụng như thế nào?",
+      "query_used": "Vậy trong trường hợp khẩn cấp, quy định này sẽ được áp dụng như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_12"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_52",
+        "63_VBHN_điều_76",
+        "54_VBHN_điều_50",
+        "63_VBHN_điều_85",
+        "54_VBHN_điều_12"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.2,
+      "latency_seconds": 0.07621570001356304
+    },
+    {
+      "sample_id": "legal_vbhq_0013",
+      "question": "Vậy những vấn đề nào cụ thể được luật giao trong nghị quyết này?",
+      "query_used": "Vậy những vấn đề nào cụ thể được luật giao trong nghị quyết này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_13"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_14",
+        "54_VBHN_điều_13",
+        "54_VBHN_điều_11",
+        "54_VBHN_điều_24",
+        "54_VBHN_điều_22"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07335739998961799
+    },
+    {
+      "sample_id": "legal_vbhq_0014",
+      "question": "Vậy trong trường hợp nào thì Chính phủ có thể ban hành nghị quyết?",
+      "query_used": "Vậy trong trường hợp nào thì Chính phủ có thể ban hành nghị quyết?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_14"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_14",
+        "54_VBHN_điều_36",
+        "54_VBHN_điều_15",
+        "54_VBHN_điều_32",
+        "54_VBHN_điều_54"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07027729999390431
+    },
+    {
+      "sample_id": "legal_vbhq_0015",
+      "question": "Vậy thì các biện pháp chỉ đạo của Thủ tướng liên quan đến hoạt động của Chính phủ được quy định như thế nào?",
+      "query_used": "Vậy thì các biện pháp chỉ đạo của Thủ tướng liên quan đến hoạt động của Chính phủ được quy định như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_15"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_15",
+        "54_VBHN_điều_45",
+        "54_VBHN_điều_18",
+        "54_VBHN_điều_12",
+        "54_VBHN_điều_51"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07989329998963512
+    },
+    {
+      "sample_id": "legal_vbhq_0016",
+      "question": "Nghị quyết này có ảnh hưởng như thế nào đến hoạt động của Chánh án Tòa án nhân dân tối cao?",
+      "query_used": "Nghị quyết này có ảnh hưởng như thế nào đến hoạt động của Chánh án Tòa án nhân dân tối cao?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_16"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_16",
+        "54_VBHN_điều_46",
+        "54_VBHN_điều_4",
+        "54_VBHN_điều_20",
+        "54_VBHN_điều_49"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07833320001373067
+    },
+    {
+      "sample_id": "legal_vbhq_0017",
+      "question": "Vậy quy định này áp dụng trong trường hợp nào?",
+      "query_used": "Vậy quy định này áp dụng trong trường hợp nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_17"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_92",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_86",
+        "63_VBHN_điều_85"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07203619999927469
+    },
+    {
+      "sample_id": "legal_vbhq_0018",
+      "question": "Trong tình huống này, bộ trưởng còn có trách nhiệm gì nữa không?",
+      "query_used": "Trong tình huống này, bộ trưởng còn có trách nhiệm gì nữa không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_18"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_18",
+        "63_VBHN_điều_53",
+        "54_VBHN_điều_63",
+        "54_VBHN_điều_49"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07340900000417605
+    },
+    {
+      "sample_id": "legal_vbhq_0019",
+      "question": "Vậy những vấn đề nào thuộc thẩm quyền của Tổng Kiểm toán nhà nước theo quy định này?",
+      "query_used": "Vậy những vấn đề nào thuộc thẩm quyền của Tổng Kiểm toán nhà nước theo quy định này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_19"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_19",
+        "54_VBHN_điều_48",
+        "54_VBHN_điều_64",
+        "54_VBHN_điều_14",
+        "54_VBHN_điều_10"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07503979999455623
+    },
+    {
+      "sample_id": "legal_vbhq_0020",
+      "question": "Vậy còn trường hợp nào không được ban hành thông tư liên tịch?",
+      "query_used": "Vậy còn trường hợp nào không được ban hành thông tư liên tịch?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_20"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_20",
+        "54_VBHN_điều_49",
+        "54_VBHN_điều_13",
+        "54_VBHN_điều_18",
+        "54_VBHN_điều_48"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07239020001725294
+    },
+    {
+      "sample_id": "legal_vbhq_0021",
+      "question": "Trong trường hợp cần thực hiện thí điểm chính sách, quy định nào sẽ áp dụng ở đây?",
+      "query_used": "Trong trường hợp cần thực hiện thí điểm chính sách, quy định nào sẽ áp dụng ở đây?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_21"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_10",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_32",
+        "54_VBHN_điều_30"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.0799645000079181
+    },
+    {
+      "sample_id": "legal_vbhq_0022",
+      "question": "Luật này quy định những vấn đề nào mà Hội đồng nhân dân cấp xã được phép ban hành nghị quyết?",
+      "query_used": "Luật này quy định những vấn đề nào mà Hội đồng nhân dân cấp xã được phép ban hành nghị quyết?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_22"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_22",
+        "54_VBHN_điều_21",
+        "54_VBHN_điều_11",
+        "63_VBHN_điều_105",
+        "54_VBHN_điều_16"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07595980001497082
+    },
+    {
+      "sample_id": "legal_vbhq_0023",
+      "question": "Căn cứ vào đâu để xây dựng định hướng đó, theo quy định này?",
+      "query_used": "Căn cứ vào đâu để xây dựng định hướng đó, theo quy định này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_23"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_23",
+        "54_VBHN_điều_29",
+        "54_VBHN_điều_27",
+        "63_VBHN_điều_106",
+        "54_VBHN_điều_28"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07392589998198673
+    },
+    {
+      "sample_id": "legal_vbhq_0024",
+      "question": "Vậy tờ trình đề xuất phải bao gồm những nội dung gì để được xem xét?",
+      "query_used": "Vậy tờ trình đề xuất phải bao gồm những nội dung gì để được xem xét?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_24"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_39",
+        "54_VBHN_điều_24",
+        "54_VBHN_điều_51"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.0755566000007093
+    },
+    {
+      "sample_id": "legal_vbhq_0025",
+      "question": "Vậy trong trường hợp có nội dung đề xuất mà chưa được Quốc hội giao, quy trình ra sao?",
+      "query_used": "Vậy trong trường hợp có nội dung đề xuất mà chưa được Quốc hội giao, quy trình ra sao?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_25"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_25",
+        "54_VBHN_điều_35",
+        "54_VBHN_điều_38",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_33"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07568159999209456
+    },
+    {
+      "sample_id": "legal_vbhq_0026",
+      "question": "Nếu có trường hợp cần ban hành luật ngay lập tức thì quy trình sẽ được thực hiện như thế nào?",
+      "query_used": "Nếu có trường hợp cần ban hành luật ngay lập tức thì quy trình sẽ được thực hiện như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_26"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_50",
+        "54_VBHN_điều_52",
+        "54_VBHN_điều_51",
+        "54_VBHN_điều_33"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07743800000753254
+    },
+    {
+      "sample_id": "legal_vbhq_0027",
+      "question": "Trong trường hợp nào thì cơ quan trình không phải thực hiện quy trình xây dựng chính sách?",
+      "query_used": "Trong trường hợp nào thì cơ quan trình không phải thực hiện quy trình xây dựng chính sách?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_27"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_33",
+        "54_VBHN_điều_32",
+        "54_VBHN_điều_26",
+        "54_VBHN_điều_30"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07629490000545047
+    },
+    {
+      "sample_id": "legal_vbhq_0028",
+      "question": "Trong trường hợp này, nội dung của chính sách cần phải bao gồm những gì?",
+      "query_used": "Trong trường hợp này, nội dung của chính sách cần phải bao gồm những gì?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_28"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_28",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_29",
+        "54_VBHN_điều_34"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07074110000394285
+    },
+    {
+      "sample_id": "legal_vbhq_0029",
+      "question": "Vậy nội dung đánh giá tác động của chính sách sẽ bao gồm những gì?",
+      "query_used": "Vậy nội dung đánh giá tác động của chính sách sẽ bao gồm những gì?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_29"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_29",
+        "54_VBHN_điều_3",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_28",
+        "54_VBHN_điều_30"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0697820000059437
+    },
+    {
+      "sample_id": "legal_vbhq_0030",
+      "question": "Vậy còn hồ sơ chính sách để lấy ý kiến, tham vấn chính sách bao gồm những gì?",
+      "query_used": "Vậy còn hồ sơ chính sách để lấy ý kiến, tham vấn chính sách bao gồm những gì?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_30"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_30",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_6",
+        "54_VBHN_điều_3",
+        "54_VBHN_điều_68"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07796530000632629
+    },
+    {
+      "sample_id": "legal_vbhq_0031",
+      "question": "Ngoài Bộ Tư pháp, có những cơ quan nào khác tham gia vào quá trình thẩm định này?",
+      "query_used": "Ngoài Bộ Tư pháp, có những cơ quan nào khác tham gia vào quá trình thẩm định này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_31"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_46",
+        "54_VBHN_điều_49",
+        "54_VBHN_điều_37"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07286660000681877
+    },
+    {
+      "sample_id": "legal_vbhq_0032",
+      "question": "Vậy còn những nghị quyết không do Chính phủ trình thì thế nào?",
+      "query_used": "Vậy còn những nghị quyết không do Chính phủ trình thì thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_32"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_36",
+        "54_VBHN_điều_32",
+        "54_VBHN_điều_35",
+        "54_VBHN_điều_15",
+        "54_VBHN_điều_37"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07128470001043752
+    },
+    {
+      "sample_id": "legal_vbhq_0033",
+      "question": "Vậy thì, khi nào cơ quan chủ trì soạn thảo cần tổ chức lấy ý kiến của các Đoàn đại biểu Quốc hội?",
+      "query_used": "Vậy thì, khi nào cơ quan chủ trì soạn thảo cần tổ chức lấy ý kiến của các Đoàn đại biểu Quốc hội?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_33"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_33",
+        "54_VBHN_điều_49",
+        "54_VBHN_điều_38",
+        "54_VBHN_điều_40",
+        "54_VBHN_điều_41"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07875699998112395
+    },
+    {
+      "sample_id": "legal_vbhq_0034",
+      "question": "Liệu Bộ Tư pháp có thẩm quyền thành lập hội đồng thẩm định trong những trường hợp nhất định không?",
+      "query_used": "Liệu Bộ Tư pháp có thẩm quyền thành lập hội đồng thẩm định trong những trường hợp nhất định không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_34"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_46",
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_52",
+        "54_VBHN_điều_67"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.0772900000156369
+    },
+    {
+      "sample_id": "legal_vbhq_0035",
+      "question": "Đối với hồ sơ đó, cần phải bao gồm những tài liệu gì?",
+      "query_used": "Đối với hồ sơ đó, cần phải bao gồm những tài liệu gì?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_35"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_57",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_34",
+        "63_VBHN_điều_100",
+        "54_VBHN_điều_39"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06927520001772791
+    },
+    {
+      "sample_id": "legal_vbhq_0036",
+      "question": "Vậy trong trường hợp nào cơ quan khác có thể trình dự án luật mà không phải Chính phủ?",
+      "query_used": "Vậy trong trường hợp nào cơ quan khác có thể trình dự án luật mà không phải Chính phủ?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_36"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_35",
+        "54_VBHN_điều_36",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_37"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07745360000990331
+    },
+    {
+      "sample_id": "legal_vbhq_0037",
+      "question": "Quy định này còn yêu cầu gì khác đối với cơ quan trình không?",
+      "query_used": "Quy định này còn yêu cầu gì khác đối với cơ quan trình không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_37"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_37",
+        "54_VBHN_điều_32",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_3"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07249940000474453
+    },
+    {
+      "sample_id": "legal_vbhq_0038",
+      "question": "Luật này quy định thời gian nào để gửi hồ sơ cho Ủy ban Thường vụ Quốc hội?",
+      "query_used": "Luật này quy định thời gian nào để gửi hồ sơ cho Ủy ban Thường vụ Quốc hội?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_38"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_39",
+        "54_VBHN_điều_37",
+        "54_VBHN_điều_35",
+        "54_VBHN_điều_38",
+        "54_VBHN_điều_40"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.07539969999925233
+    },
+    {
+      "sample_id": "legal_vbhq_0039",
+      "question": "Vậy trong trường hợp Ủy ban Thường vụ Quốc hội thì quy trình xem xét như thế nào?",
+      "query_used": "Vậy trong trường hợp Ủy ban Thường vụ Quốc hội thì quy trình xem xét như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_39"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_39",
+        "54_VBHN_điều_37",
+        "54_VBHN_điều_38",
+        "54_VBHN_điều_43",
+        "54_VBHN_điều_42"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07563669999944977
+    },
+    {
+      "sample_id": "legal_vbhq_0040",
+      "question": "Vậy trong quá trình thảo luận, cơ quan trình sẽ giải trình những vấn đề gì liên quan đến dự án?",
+      "query_used": "Vậy trong quá trình thảo luận, cơ quan trình sẽ giải trình những vấn đề gì liên quan đến dự án?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_40"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_40",
+        "54_VBHN_điều_38",
+        "54_VBHN_điều_36",
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_41"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0820123000012245
+    },
+    {
+      "sample_id": "legal_vbhq_0041",
+      "question": "Trong trường hợp Ủy ban Thường vụ Quốc hội tổ chức Hội nghị chuyên trách để thảo luận về dự thảo thì quy trình thực hiện ra sao?",
+      "query_used": "Trong trường hợp Ủy ban Thường vụ Quốc hội tổ chức Hội nghị chuyên trách để thảo luận về dự thảo thì quy trình thực hiện ra sao?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_41"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_38",
+        "54_VBHN_điều_41",
+        "54_VBHN_điều_33",
+        "54_VBHN_điều_42",
+        "54_VBHN_điều_40"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.08323049999307841
+    },
+    {
+      "sample_id": "legal_vbhq_0042",
+      "question": "Nếu như dự thảo chưa được thông qua, quy trình nào sẽ diễn ra tiếp theo?",
+      "query_used": "Nếu như dự thảo chưa được thông qua, quy trình nào sẽ diễn ra tiếp theo?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_42"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_42",
+        "54_VBHN_điều_40",
+        "54_VBHN_điều_41",
+        "54_VBHN_điều_47",
+        "54_VBHN_điều_33"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07572199997957796
+    },
+    {
+      "sample_id": "legal_vbhq_0043",
+      "question": "Vậy trong trường hợp pháp lệnh đã được Ủy ban Thường vụ Quốc hội thông qua nhưng Chủ tịch nước đề nghị xem xét lại thì thời gian công bố sẽ như thế nào?",
+      "query_used": "Vậy trong trường hợp pháp lệnh đã được Ủy ban Thường vụ Quốc hội thông qua nhưng Chủ tịch nước đề nghị xem xét lại thì thời gian công bố sẽ như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_43"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_43",
+        "54_VBHN_điều_42",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_11",
+        "54_VBHN_điều_39"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08783999999286607
+    },
+    {
+      "sample_id": "legal_vbhq_0044",
+      "question": "Trong trường hợp nào thì việc đăng tải lệnh, quyết định có thể không thực hiện theo quy định thông thường?",
+      "query_used": "Trong trường hợp nào thì việc đăng tải lệnh, quyết định có thể không thực hiện theo quy định thông thường?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_44"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_12",
+        "54_VBHN_điều_48",
+        "54_VBHN_điều_33"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08101500000339001
+    },
+    {
+      "sample_id": "legal_vbhq_0045",
+      "question": "Vậy trình tự và thủ tục để thực hiện việc này là gì?",
+      "query_used": "Vậy trình tự và thủ tục để thực hiện việc này là gì?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_45"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_50",
+        "54_VBHN_điều_51",
+        "54_VBHN_điều_47",
+        "54_VBHN_điều_45",
+        "54_VBHN_điều_34"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.07125130001804791
+    },
+    {
+      "sample_id": "legal_vbhq_0046",
+      "question": "Luật này quy định như thế nào về việc gửi dự thảo thông tư để lấy ý kiến?",
+      "query_used": "Luật này quy định như thế nào về việc gửi dự thảo thông tư để lấy ý kiến?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_46"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_47",
+        "54_VBHN_điều_35",
+        "54_VBHN_điều_48",
+        "54_VBHN_điều_46",
+        "54_VBHN_điều_33"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.07583260000683367
+    },
+    {
+      "sample_id": "legal_vbhq_0047",
+      "question": "Trong trường hợp nào thì việc đăng tải dự thảo thông tư không cần thực hiện theo quy định 20 ngày?",
+      "query_used": "Trong trường hợp nào thì việc đăng tải dự thảo thông tư không cần thực hiện theo quy định 20 ngày?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_47"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_47",
+        "54_VBHN_điều_48",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_51",
+        "54_VBHN_điều_46"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07636700000148267
+    },
+    {
+      "sample_id": "legal_vbhq_0048",
+      "question": "Vậy thì quy trình đăng tải dự thảo này diễn ra như thế nào?",
+      "query_used": "Vậy thì quy trình đăng tải dự thảo này diễn ra như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_48"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_47",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_33",
+        "54_VBHN_điều_51",
+        "54_VBHN_điều_48"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.2,
+      "latency_seconds": 0.06635839998489246
+    },
+    {
+      "sample_id": "legal_vbhq_0049",
+      "question": "Trong trường hợp nào thì dự thảo nghị quyết cần được thẩm tra và thẩm định?",
+      "query_used": "Trong trường hợp nào thì dự thảo nghị quyết cần được thẩm tra và thẩm định?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_49"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_36",
+        "54_VBHN_điều_39",
+        "54_VBHN_điều_49",
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_51"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.07414710000739433
+    },
+    {
+      "sample_id": "legal_vbhq_0050",
+      "question": "Vậy ai là những người có thẩm quyền quyết định việc áp dụng trình tự này?",
+      "query_used": "Vậy ai là những người có thẩm quyền quyết định việc áp dụng trình tự này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_50"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_50",
+        "63_VBHN_điều_105",
+        "63_VBHN_điều_106",
+        "54_VBHN_điều_16",
+        "63_VBHN_điều_87"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07110189998638816
+    },
+    {
+      "sample_id": "legal_vbhq_0051",
+      "question": "Vậy thì văn bản đề nghị áp dụng trình tự, thủ tục rút gọn cần có những nội dung gì?",
+      "query_used": "Vậy thì văn bản đề nghị áp dụng trình tự, thủ tục rút gọn cần có những nội dung gì?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_51"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_51",
+        "54_VBHN_điều_50",
+        "54_VBHN_điều_26",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_44"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07555819998378865
+    },
+    {
+      "sample_id": "legal_vbhq_0052",
+      "question": "Nếu như vậy, ai sẽ là cơ quan chủ trì trong việc soạn thảo văn bản đó?",
+      "query_used": "Nếu như vậy, ai sẽ là cơ quan chủ trì trong việc soạn thảo văn bản đó?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_52"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_33",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_52",
+        "54_VBHN_điều_49",
+        "54_VBHN_điều_47"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.0770104999828618
+    },
+    {
+      "sample_id": "legal_vbhq_0053",
+      "question": "Vậy trong trường hợp đặc biệt, thời điểm có hiệu lực sẽ như thế nào?",
+      "query_used": "Vậy trong trường hợp đặc biệt, thời điểm có hiệu lực sẽ như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_53"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_53",
+        "54_VBHN_điều_56",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_54",
+        "63_VBHN_điều_6"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0727164999989327
+    },
+    {
+      "sample_id": "legal_vbhq_0054",
+      "question": "Nếu một đơn vị hành chính được chia thành nhiều đơn vị mới, văn bản quy phạm pháp luật trước đó sẽ được áp dụng như thế nào?",
+      "query_used": "Nếu một đơn vị hành chính được chia thành nhiều đơn vị mới, văn bản quy phạm pháp luật trước đó sẽ được áp dụng như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_54"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_54",
+        "54_VBHN_điều_2",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_72"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08898339999723248
+    },
+    {
+      "sample_id": "legal_vbhq_0055",
+      "question": "Vậy thì quy định nào không cho phép hiệu lực trở về trước?",
+      "query_used": "Vậy thì quy định nào không cho phép hiệu lực trở về trước?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_55"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_55",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_54",
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_36"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06622450001304969
+    },
+    {
+      "sample_id": "legal_vbhq_0056",
+      "question": "Vậy thời điểm tạm ngưng hiệu lực sẽ được quy định như thế nào?",
+      "query_used": "Vậy thời điểm tạm ngưng hiệu lực sẽ được quy định như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_56"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_56",
+        "54_VBHN_điều_53",
+        "63_VBHN_điều_25",
+        "54_VBHN_điều_71",
+        "63_VBHN_điều_80"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07682200000272132
+    },
+    {
+      "sample_id": "legal_vbhq_0057",
+      "question": "Trong trường hợp  văn bản đó bị bãi bỏ, sẽ xảy ra điều gì tiếp theo?",
+      "query_used": "Trong trường hợp  văn bản đó bị bãi bỏ, sẽ xảy ra điều gì tiếp theo?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_57"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_8",
+        "54_VBHN_điều_57",
+        "54_VBHN_điều_72",
+        "54_VBHN_điều_56",
+        "54_VBHN_điều_58"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07497349998448044
+    },
+    {
+      "sample_id": "legal_vbhq_0058",
+      "question": "Do đó, nếu có văn bản quy phạm pháp luật quy định hiệu lực trở về trước thì sẽ thế nào?",
+      "query_used": "Do đó, nếu có văn bản quy phạm pháp luật quy định hiệu lực trở về trước thì sẽ thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_58"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_55",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_57",
+        "54_VBHN_điều_54",
+        "54_VBHN_điều_53"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07763569999951869
+    },
+    {
+      "sample_id": "legal_vbhq_0059",
+      "question": "Vậy điều kiện để tổ chức thi hành văn bản quy phạm pháp luật là gì?",
+      "query_used": "Vậy điều kiện để tổ chức thi hành văn bản quy phạm pháp luật là gì?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_59"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_59",
+        "54_VBHN_điều_70",
+        "54_VBHN_điều_2",
+        "54_VBHN_điều_1",
+        "54_VBHN_điều_58"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0719260000041686
+    },
+    {
+      "sample_id": "legal_vbhq_0060",
+      "question": "Trong trường hợp nào quy định này có thể gặp khó khăn trong việc áp dụng?",
+      "query_used": "Trong trường hợp nào quy định này có thể gặp khó khăn trong việc áp dụng?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_60"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_76",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_92",
+        "54_VBHN_điều_61",
+        "63_VBHN_điều_94"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07574639999074861
+    },
+    {
+      "sample_id": "legal_vbhq_0061",
+      "question": "Vậy trong trường hợp văn bản này, ai là người có thẩm quyền để hướng dẫn áp dụng?",
+      "query_used": "Vậy trong trường hợp văn bản này, ai là người có thẩm quyền để hướng dẫn áp dụng?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_61"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_68",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_59",
+        "63_VBHN_điều_105"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07638919999590144
+    },
+    {
+      "sample_id": "legal_vbhq_0062",
+      "question": "Vậy quy định về hoạt động giám sát của Quốc hội và Hội đồng nhân dân đó áp dụng cho những loại văn bản nào?",
+      "query_used": "Vậy quy định về hoạt động giám sát của Quốc hội và Hội đồng nhân dân đó áp dụng cho những loại văn bản nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_62"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_62",
+        "54_VBHN_điều_64",
+        "63_VBHN_điều_19",
+        "54_VBHN_điều_52",
+        "54_VBHN_điều_68"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08272420000866987
+    },
+    {
+      "sample_id": "legal_vbhq_0063",
+      "question": "Vậy quy trình tự kiểm tra văn bản quy phạm pháp luật của những cơ quan này như thế nào?",
+      "query_used": "Vậy quy trình tự kiểm tra văn bản quy phạm pháp luật của những cơ quan này như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_63"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_63",
+        "54_VBHN_điều_3",
+        "54_VBHN_điều_62",
+        "54_VBHN_điều_51",
+        "54_VBHN_điều_64"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07635459999437444
+    },
+    {
+      "sample_id": "legal_vbhq_0064",
+      "question": "Vậy điều nào quy định về việc rà soát văn bản của các đơn vị hành chính - kinh tế đặc biệt?",
+      "query_used": "Vậy điều nào quy định về việc rà soát văn bản của các đơn vị hành chính - kinh tế đặc biệt?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_64"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_64",
+        "54_VBHN_điều_22",
+        "54_VBHN_điều_63",
+        "54_VBHN_điều_70",
+        "54_VBHN_điều_10"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08076379998237826
+    },
+    {
+      "sample_id": "legal_vbhq_0065",
+      "question": "Vậy quy trình hợp nhất này được thực hiện theo quy định nào?",
+      "query_used": "Vậy quy trình hợp nhất này được thực hiện theo quy định nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_65"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_65",
+        "54_VBHN_điều_33",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_72"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07089370000176132
+    },
+    {
+      "sample_id": "legal_vbhq_0066",
+      "question": "Vậy quy định về việc ứng dụng công nghệ số trong xây dựng và ban hành văn bản đó được thực hiện như thế nào?",
+      "query_used": "Vậy quy định về việc ứng dụng công nghệ số trong xây dựng và ban hành văn bản đó được thực hiện như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_66"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_66",
+        "54_VBHN_điều_70",
+        "54_VBHN_điều_72",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_58"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07805319997714832
+    },
+    {
+      "sample_id": "legal_vbhq_0067",
+      "question": "Vậy nếu một cơ quan không thực hiện việc xin ý kiến đó thì sẽ bị xử lý như thế nào?",
+      "query_used": "Vậy nếu một cơ quan không thực hiện việc xin ý kiến đó thì sẽ bị xử lý như thế nào?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_67"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_67",
+        "54_VBHN_điều_33",
+        "63_VBHN_điều_2",
+        "54_VBHN_điều_35",
+        "54_VBHN_điều_47"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07889259999501519
+    },
+    {
+      "sample_id": "legal_vbhq_0068",
+      "question": "Vậy trong trường hợp văn bản đó bị ban hành trái pháp luật thì ai sẽ chịu trách nhiệm?",
+      "query_used": "Vậy trong trường hợp văn bản đó bị ban hành trái pháp luật thì ai sẽ chịu trách nhiệm?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_68"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_8",
+        "54_VBHN_điều_2",
+        "54_VBHN_điều_68",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_63"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.07891310000559315
+    },
+    {
+      "sample_id": "legal_vbhq_0069",
+      "question": "Vậy còn ngân sách cho việc đào tạo và bồi dưỡng nguồn nhân lực này thì sao?",
+      "query_used": "Vậy còn ngân sách cho việc đào tạo và bồi dưỡng nguồn nhân lực này thì sao?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_69"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_69",
+        "54_VBHN_điều_70",
+        "54_VBHN_điều_72",
+        "54_VBHN_điều_31",
+        "63_VBHN_điều_24"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07356429999344982
+    },
+    {
+      "sample_id": "legal_vbhq_0070",
+      "question": "Luật này có quy định gì về việc phân bổ kinh phí cho công tác này không?",
+      "query_used": "Luật này có quy định gì về việc phân bổ kinh phí cho công tác này không?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_70"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_70",
+        "54_VBHN_điều_69",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_72"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07533610000973567
+    },
+    {
+      "sample_id": "legal_vbhq_0071",
+      "question": "Vậy trong trường hợp nào thì việc điều chỉnh sẽ được thực hiện theo quy định của luật này?",
+      "query_used": "Vậy trong trường hợp nào thì việc điều chỉnh sẽ được thực hiện theo quy định của luật này?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_71"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_1",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_1",
+        "54_VBHN_điều_50",
+        "63_VBHN_điều_85"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07698770001297817
+    },
+    {
+      "sample_id": "legal_vbhq_0072",
+      "question": "Vậy còn những dự án luật được bổ sung vào chương trình sau khi luật này có hiệu lực thì sao?",
+      "query_used": "Vậy còn những dự án luật được bổ sung vào chương trình sau khi luật này có hiệu lực thì sao?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_72"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_72",
+        "54_VBHN_điều_26",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0787739000224974
+    },
+    {
+      "sample_id": "legal_vbhq_0073",
+      "question": "Trong trường hợp đó, quy định nào sẽ được áp dụng bởi Hội đồng nhân dân, Ủy ban nhân dân cấp xã khi ban hành văn bản?",
+      "query_used": "Trong trường hợp đó, quy định nào sẽ được áp dụng bởi Hội đồng nhân dân, Ủy ban nhân dân cấp xã khi ban hành văn bản?",
+      "ground_truth_cids": [
+        "54_VBHN_điều_3"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_22",
+        "54_VBHN_điều_54",
+        "54_VBHN_điều_55",
+        "63_VBHN_điều_98",
+        "54_VBHN_điều_61"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.08861350000370294
+    },
+    {
+      "sample_id": "legal_vbhq_0074",
+      "question": "Vậy thì những luật nào đã sửa đổi, bổ sung cho quy định này tính đến năm 2025?",
+      "query_used": "Vậy thì những luật nào đã sửa đổi, bổ sung cho quy định này tính đến năm 2025?",
+      "ground_truth_cids": [
+        "63_VBHN_khác"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_72",
+        "54_VBHN_khác",
+        "54_VBHN_điều_71",
+        "63_VBHN_khác",
+        "63_VBHN_điều_142"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.08582549999118783
+    },
+    {
+      "sample_id": "legal_vbhq_0075",
+      "question": "Vậy các biện pháp xử lý hành chính được quy định như thế nào?",
+      "query_used": "Vậy các biện pháp xử lý hành chính được quy định như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_1"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_1",
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_6",
+        "63_VBHN_điều_12"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07770150000578724
+    },
+    {
+      "sample_id": "legal_vbhq_0076",
+      "question": "Vậy trong trường hợp nào hành vi đó bị xử phạt vi phạm hành chính?",
+      "query_used": "Vậy trong trường hợp nào hành vi đó bị xử phạt vi phạm hành chính?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_2"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_52",
+        "63_VBHN_điều_68",
+        "63_VBHN_điều_20",
+        "63_VBHN_điều_4"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.12670619998243637
+    },
+    {
+      "sample_id": "legal_vbhq_0077",
+      "question": "Vậy trong trường hợp nhiều người cùng thực hiện một hành vi vi phạm hành chính thì sẽ bị xử lý như thế nào?",
+      "query_used": "Vậy trong trường hợp nhiều người cùng thực hiện một hành vi vi phạm hành chính thì sẽ bị xử lý như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_3"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_3",
+        "63_VBHN_điều_20",
+        "63_VBHN_điều_52",
+        "63_VBHN_điều_68"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.08877079997910187
+    },
+    {
+      "sample_id": "legal_vbhq_0078",
+      "question": "Ngoài những nội dung đã nêu, chế độ áp dụng các biện pháp xử lý hành chính cũng được quy định ra sao trong văn bản này?",
+      "query_used": "Ngoài những nội dung đã nêu, chế độ áp dụng các biện pháp xử lý hành chính cũng được quy định ra sao trong văn bản này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_4"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_20",
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_1",
+        "63_VBHN_điều_120"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0899920999945607
+    },
+    {
+      "sample_id": "legal_vbhq_0079",
+      "question": "Vậy những người thuộc lực lượng Quân đội nhân dân và Công an nhân dân thì bị xử lý như thế nào?",
+      "query_used": "Vậy những người thuộc lực lượng Quân đội nhân dân và Công an nhân dân thì bị xử lý như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_5"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_5",
+        "63_VBHN_điều_123",
+        "63_VBHN_điều_76",
+        "63_VBHN_điều_90",
+        "63_VBHN_điều_20"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0859929000143893
+    },
+    {
+      "sample_id": "legal_vbhq_0080",
+      "question": "Với những trường hợp đặc biệt đó, thời hiệu sẽ là bao lâu?",
+      "query_used": "Với những trường hợp đặc biệt đó, thời hiệu sẽ là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_6"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_6",
+        "54_VBHN_điều_53",
+        "54_VBHN_điều_52",
+        "63_VBHN_điều_25",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07710660001612268
+    },
+    {
+      "sample_id": "legal_vbhq_0081",
+      "question": "Trong trường hợp nào cá nhân bị áp dụng biện pháp xử lý hành chính thì được coi là chưa bị áp dụng biện pháp này?",
+      "query_used": "Trong trường hợp nào cá nhân bị áp dụng biện pháp xử lý hành chính thì được coi là chưa bị áp dụng biện pháp này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_7"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_7",
+        "63_VBHN_điều_137",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_2",
+        "63_VBHN_điều_136"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07945819999440573
+    },
+    {
+      "sample_id": "legal_vbhq_0082",
+      "question": "Nếu như vậy thì thời gian ban đêm được tính như thế nào?",
+      "query_used": "Nếu như vậy thì thời gian ban đêm được tính như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_8"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_8",
+        "63_VBHN_điều_6",
+        "63_VBHN_điều_122",
+        "63_VBHN_điều_77",
+        "54_VBHN_điều_51"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06710350001230836
+    },
+    {
+      "sample_id": "legal_vbhq_0083",
+      "question": "Nếu trong trường hợp nào đó, người vi phạm lại có hành vi khắc phục hậu quả, thì sẽ được xem xét giảm nhẹ như thế nào?",
+      "query_used": "Nếu trong trường hợp nào đó, người vi phạm lại có hành vi khắc phục hậu quả, thì sẽ được xem xét giảm nhẹ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_9"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_9",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_134"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08877199998823926
+    },
+    {
+      "sample_id": "legal_vbhq_0084",
+      "question": "Tuy nhiên, những tình tiết nào không được coi là tình tiết tăng nặng?",
+      "query_used": "Tuy nhiên, những tình tiết nào không được coi là tình tiết tăng nặng?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_10"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_10",
+        "63_VBHN_điều_9",
+        "63_VBHN_điều_59",
+        "63_VBHN_điều_3",
+        "63_VBHN_điều_23"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07609450002200902
+    },
+    {
+      "sample_id": "legal_vbhq_0085",
+      "question": "Trong những trường hợp này, nếu người vi phạm không có năng lực trách nhiệm hành chính thì sẽ như thế nào?",
+      "query_used": "Trong những trường hợp này, nếu người vi phạm không có năng lực trách nhiệm hành chính thì sẽ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_11"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_16",
+        "63_VBHN_điều_14",
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_117"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08599769999273121
+    },
+    {
+      "sample_id": "legal_vbhq_0086",
+      "question": "Vậy trong các hành vi này, hành vi nào liên quan đến việc can thiệp trái pháp luật vào việc xử lý vi phạm hành chính?",
+      "query_used": "Vậy trong các hành vi này, hành vi nào liên quan đến việc can thiệp trái pháp luật vào việc xử lý vi phạm hành chính?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_12"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_12",
+        "63_VBHN_điều_18",
+        "63_VBHN_điều_2",
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_4"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08230589999584481
+    },
+    {
+      "sample_id": "legal_vbhq_0087",
+      "question": "Ngoài người vi phạm, ai sẽ phải chịu trách nhiệm bồi thường trong trường hợp này?",
+      "query_used": "Ngoài người vi phạm, ai sẽ phải chịu trách nhiệm bồi thường trong trường hợp này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_13"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_13",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_128",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_127"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07227199999033473
+    },
+    {
+      "sample_id": "legal_vbhq_0088",
+      "question": "Trong trường hợp phát hiện vi phạm hành chính, những ai cần có trách nhiệm báo cáo?",
+      "query_used": "Trong trường hợp phát hiện vi phạm hành chính, những ai cần có trách nhiệm báo cáo?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_14"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_14",
+        "63_VBHN_điều_127",
+        "63_VBHN_điều_72",
+        "63_VBHN_điều_16",
+        "63_VBHN_điều_59"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07069610001053661
+    },
+    {
+      "sample_id": "legal_vbhq_0089",
+      "question": "Trong trường hợp đó, nếu quyết định bị khiếu nại dẫn đến hậu quả khó khắc phục, thì sẽ có biện pháp gì được thực hiện?",
+      "query_used": "Trong trường hợp đó, nếu quyết định bị khiếu nại dẫn đến hậu quả khó khắc phục, thì sẽ có biện pháp gì được thực hiện?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_15"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_15",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_73"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08470839998335578
+    },
+    {
+      "sample_id": "legal_vbhq_0090",
+      "question": "Vậy nếu họ không tuân thủ quy định đó thì sẽ bị xử lý ra sao?",
+      "query_used": "Vậy nếu họ không tuân thủ quy định đó thì sẽ bị xử lý ra sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_16"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_75"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07006319999345578
+    },
+    {
+      "sample_id": "legal_vbhq_0091",
+      "question": "Vậy Bộ Tư pháp có nhiệm vụ và quyền hạn gì trong việc thực hiện quản lý công tác này?",
+      "query_used": "Vậy Bộ Tư pháp có nhiệm vụ và quyền hạn gì trong việc thực hiện quản lý công tác này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_17"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_17",
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_64",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_68"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07411090002278797
+    },
+    {
+      "sample_id": "legal_vbhq_0092",
+      "question": "Ngoài việc kiểm tra, thanh tra, thì nghĩa vụ khác của thủ trưởng cơ quan trong xử lý vi phạm hành chính là gì?",
+      "query_used": "Ngoài việc kiểm tra, thanh tra, thì nghĩa vụ khác của thủ trưởng cơ quan trong xử lý vi phạm hành chính là gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_18"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_18",
+        "63_VBHN_điều_17",
+        "63_VBHN_điều_16",
+        "63_VBHN_điều_19",
+        "63_VBHN_điều_14"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07971910000196658
+    },
+    {
+      "sample_id": "legal_vbhq_0093",
+      "question": "Quy định nào cần phải tuân thủ theo quy định này?",
+      "query_used": "Quy định nào cần phải tuân thủ theo quy định này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_18"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_120",
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_64",
+        "63_VBHN_điều_16",
+        "54_VBHN_điều_61"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07079820000217296
+    },
+    {
+      "sample_id": "legal_vbhq_0094",
+      "question": "Vậy khi phát hiện hành vi trái pháp luật, những tổ chức này có quyền làm gì?",
+      "query_used": "Vậy khi phát hiện hành vi trái pháp luật, những tổ chức này có quyền làm gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_19"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_19",
+        "63_VBHN_điều_14",
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_73",
+        "63_VBHN_điều_37"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07163430002401583
+    },
+    {
+      "sample_id": "legal_vbhq_0095",
+      "question": "Vậy, những hình thức xử phạt nào sẽ được áp dụng trong trường hợp này?",
+      "query_used": "Vậy, những hình thức xử phạt nào sẽ được áp dụng trong trường hợp này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_20"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_134"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07219660002738237
+    },
+    {
+      "sample_id": "legal_vbhq_0096",
+      "question": "Vậy thì, các hình thức xử phạt bổ sung đó được áp dụng trong trường hợp nào?",
+      "query_used": "Vậy thì, các hình thức xử phạt bổ sung đó được áp dụng trong trường hợp nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_21"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_68",
+        "63_VBHN_điều_77"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07471809998969547
+    },
+    {
+      "sample_id": "legal_vbhq_0097",
+      "question": "Vậy trường hợp nào thì việc quyết định cảnh cáo phải được thực hiện bằng văn bản?",
+      "query_used": "Vậy trường hợp nào thì việc quyết định cảnh cáo phải được thực hiện bằng văn bản?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_22"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_22",
+        "63_VBHN_điều_59",
+        "54_VBHN_điều_33",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_127"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07460159997572191
+    },
+    {
+      "sample_id": "legal_vbhq_0098",
+      "question": "Trong trường hợp nào thì mức phạt có thể cao hơn quy định chung?",
+      "query_used": "Trong trường hợp nào thì mức phạt có thể cao hơn quy định chung?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_23"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_23",
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_24",
+        "63_VBHN_điều_79",
+        "63_VBHN_điều_21"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06728879999718629
+    },
+    {
+      "sample_id": "legal_vbhq_0099",
+      "question": "Trong trường hợp nào thì mức phạt này được áp dụng?",
+      "query_used": "Trong trường hợp nào thì mức phạt này được áp dụng?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_24"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_23",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_5",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_76"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06775529999868013
+    },
+    {
+      "sample_id": "legal_vbhq_0100",
+      "question": "Ngoài ra, trong trường hợp nào thì hoạt động có thể bị đình chỉ có thời hạn?",
+      "query_used": "Ngoài ra, trong trường hợp nào thì hoạt động có thể bị đình chỉ có thời hạn?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_25"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_25",
+        "63_VBHN_điều_80",
+        "63_VBHN_điều_112",
+        "63_VBHN_điều_63",
+        "54_VBHN_điều_56"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07312499999534339
+    },
+    {
+      "sample_id": "legal_vbhq_0101",
+      "question": "Vậy thì quy định này áp dụng cho những trường hợp nào?",
+      "query_used": "Vậy thì quy định này áp dụng cho những trường hợp nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_26"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_92",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_90"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06775439999182709
+    },
+    {
+      "sample_id": "legal_vbhq_0102",
+      "question": "Quy định nào sẽ chi tiết hóa việc áp dụng hình thức xử phạt này?",
+      "query_used": "Quy định nào sẽ chi tiết hóa việc áp dụng hình thức xử phạt này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_27"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_27",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_23"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.0688631999946665
+    },
+    {
+      "sample_id": "legal_vbhq_0103",
+      "question": "Trong trường hợp nào thì biện pháp khắc phục này được áp dụng độc lập?",
+      "query_used": "Trong trường hợp nào thì biện pháp khắc phục này được áp dụng độc lập?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_28"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_28",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_32"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07115309999790043
+    },
+    {
+      "sample_id": "legal_vbhq_0104",
+      "question": "Vậy nếu tôi không thực hiện việc đó thì sẽ ra sao?",
+      "query_used": "Vậy nếu tôi không thực hiện việc đó thì sẽ ra sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_29"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_125",
+        "54_VBHN_điều_27",
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_37",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06940599999506958
+    },
+    {
+      "sample_id": "legal_vbhq_0105",
+      "question": "Nếu họ không tự nguyện thực hiện việc này, thì sẽ xảy ra điều gì?",
+      "query_used": "Nếu họ không tự nguyện thực hiện việc này, thì sẽ xảy ra điều gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_30"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_124",
+        "63_VBHN_điều_31",
+        "63_VBHN_điều_30",
+        "63_VBHN_điều_36"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.07204850000562146
+    },
+    {
+      "sample_id": "legal_vbhq_0106",
+      "question": "Trong trường hợp họ không tự nguyện thực hiện, quy định này sẽ xử lý ra sao?",
+      "query_used": "Trong trường hợp họ không tự nguyện thực hiện, quy định này sẽ xử lý ra sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_31"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_124",
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_86",
+        "54_VBHN_điều_27"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07345919997896999
+    },
+    {
+      "sample_id": "legal_vbhq_0107",
+      "question": "Vậy trong trường hợp nào thì biện pháp khắc phục hậu quả này sẽ được áp dụng đối với hàng hóa?",
+      "query_used": "Vậy trong trường hợp nào thì biện pháp khắc phục hậu quả này sẽ được áp dụng đối với hàng hóa?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_32"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_28",
+        "63_VBHN_điều_32",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_85"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.0746960999967996
+    },
+    {
+      "sample_id": "legal_vbhq_0108",
+      "question": "Vậy nếu họ không tự nguyện thực hiện việc tiêu hủy đó thì sẽ có biện pháp gì?",
+      "query_used": "Vậy nếu họ không tự nguyện thực hiện việc tiêu hủy đó thì sẽ có biện pháp gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_33"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_37",
+        "63_VBHN_điều_33",
+        "63_VBHN_điều_35",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.06955780001590028
+    },
+    {
+      "sample_id": "legal_vbhq_0109",
+      "question": "Nếu họ không tự nguyện thực hiện cải chính, vậy thì sẽ có hành động gì tiếp theo?",
+      "query_used": "Nếu họ không tự nguyện thực hiện cải chính, vậy thì sẽ có hành động gì tiếp theo?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_34"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_34",
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_31",
+        "63_VBHN_điều_30",
+        "54_VBHN_điều_27"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07184789999155328
+    },
+    {
+      "sample_id": "legal_vbhq_0110",
+      "question": "Nếu như họ không tự nguyện thực hiện thì sẽ ra sao?",
+      "query_used": "Nếu như họ không tự nguyện thực hiện thì sẽ ra sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_35"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_31",
+        "63_VBHN_điều_124",
+        "63_VBHN_điều_30",
+        "63_VBHN_điều_36"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06625990002066828
+    },
+    {
+      "sample_id": "legal_vbhq_0111",
+      "question": "Nếu một tổ chức không tự nguyện thực hiện việc thu hồi, những biện pháp nào sẽ được áp dụng để cưỡng chế họ?",
+      "query_used": "Nếu một tổ chức không tự nguyện thực hiện việc thu hồi, những biện pháp nào sẽ được áp dụng để cưỡng chế họ?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_36"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_36",
+        "63_VBHN_điều_86",
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_37",
+        "63_VBHN_điều_88"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08134899998549372
+    },
+    {
+      "sample_id": "legal_vbhq_0112",
+      "question": "Vậy trong trường hợp tổ chức đó không tự nguyện thực hiện việc nộp lại thì sẽ thế nào?",
+      "query_used": "Vậy trong trường hợp tổ chức đó không tự nguyện thực hiện việc nộp lại thì sẽ thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_37"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_37",
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_36",
+        "63_VBHN_điều_71",
+        "63_VBHN_điều_85"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07428169998456724
+    },
+    {
+      "sample_id": "legal_vbhq_0113",
+      "question": "Vậy trong số những người đó, ai là các thanh tra viên có thẩm quyền xử phạt?",
+      "query_used": "Vậy trong số những người đó, ai là các thanh tra viên có thẩm quyền xử phạt?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_37"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_52",
+        "63_VBHN_điều_87",
+        "63_VBHN_điều_128",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_54"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07347550001577474
+    },
+    {
+      "sample_id": "legal_vbhq_0114",
+      "question": "Vậy trong trường hợp phạt tiền đối với vi phạm hành chính trong nội thành, mức thẩm quyền có thay đổi không?",
+      "query_used": "Vậy trong trường hợp phạt tiền đối với vi phạm hành chính trong nội thành, mức thẩm quyền có thay đổi không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_52"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_52",
+        "63_VBHN_điều_23",
+        "63_VBHN_điều_53",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_61"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0786831000004895
+    },
+    {
+      "sample_id": "legal_vbhq_0115",
+      "question": "Vậy nếu như trường hợp chức danh đó có thay đổi cả về nhiệm vụ lẫn quyền hạn thì sẽ có sự thay đổi như thế nào?",
+      "query_used": "Vậy nếu như trường hợp chức danh đó có thay đổi cả về nhiệm vụ lẫn quyền hạn thì sẽ có sự thay đổi như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_53"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_53",
+        "54_VBHN_điều_54",
+        "54_VBHN_điều_8",
+        "63_VBHN_điều_81",
+        "63_VBHN_điều_18"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08332139998674393
+    },
+    {
+      "sample_id": "legal_vbhq_0116",
+      "question": "Nếu cấp trưởng giao quyền xử phạt cho cấp phó, quy trình cần thiết là gì?",
+      "query_used": "Nếu cấp trưởng giao quyền xử phạt cho cấp phó, quy trình cần thiết là gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_54"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_54",
+        "63_VBHN_điều_87",
+        "63_VBHN_điều_123",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_61"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07031680000363849
+    },
+    {
+      "sample_id": "legal_vbhq_0117",
+      "question": "Nếu vi phạm đó vẫn tiếp tục, thì biện pháp nào sẽ được thực hiện tiếp theo?",
+      "query_used": "Nếu vi phạm đó vẫn tiếp tục, thì biện pháp nào sẽ được thực hiện tiếp theo?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_55"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_119",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_7"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.0718611000047531
+    },
+    {
+      "sample_id": "legal_vbhq_0118",
+      "question": "Nếu trường hợp vi phạm được phát hiện bằng thiết bị kỹ thuật, thì điều gì sẽ xảy ra?",
+      "query_used": "Nếu trường hợp vi phạm được phát hiện bằng thiết bị kỹ thuật, thì điều gì sẽ xảy ra?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_56"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_64",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_128",
+        "63_VBHN_điều_58"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.0788291999779176
+    },
+    {
+      "sample_id": "legal_vbhq_0119",
+      "question": "Trong trường hợp nào thì việc xử phạt này không được áp dụng?",
+      "query_used": "Trong trường hợp nào thì việc xử phạt này không được áp dụng?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_57"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_134",
+        "63_VBHN_điều_5"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.0706505999842193
+    },
+    {
+      "sample_id": "legal_vbhq_0120",
+      "question": "Nếu biên bản được lập tại trụ sở cơ quan thì cần phải ghi rõ lý do gì?",
+      "query_used": "Nếu biên bản được lập tại trụ sở cơ quan thì cần phải ghi rõ lý do gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_58"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_58",
+        "54_VBHN_điều_52",
+        "63_VBHN_điều_57",
+        "63_VBHN_điều_69",
+        "54_VBHN_điều_9"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0726118000166025
+    },
+    {
+      "sample_id": "legal_vbhq_0121",
+      "question": "Trong trường hợp đó, họ cần xác minh những tình tiết gì?",
+      "query_used": "Trong trường hợp đó, họ cần xác minh những tình tiết gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_59"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_59",
+        "63_VBHN_điều_63",
+        "63_VBHN_điều_9",
+        "63_VBHN_điều_66",
+        "63_VBHN_điều_68"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0686926000053063
+    },
+    {
+      "sample_id": "legal_vbhq_0122",
+      "question": "Nếu không thể áp dụng cách xác định giá trị đó thì sẽ diễn ra quy trình nào?",
+      "query_used": "Nếu không thể áp dụng cách xác định giá trị đó thì sẽ diễn ra quy trình nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_60"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_60",
+        "54_VBHN_điều_27",
+        "54_VBHN_điều_29",
+        "63_VBHN_điều_37",
+        "63_VBHN_điều_125"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07386159998713993
+    },
+    {
+      "sample_id": "legal_vbhq_0123",
+      "question": "Vậy trong trường hợp họ muốn giải trình bằng văn bản thì thời hạn để gửi văn bản đó là bao lâu?",
+      "query_used": "Vậy trong trường hợp họ muốn giải trình bằng văn bản thì thời hạn để gửi văn bản đó là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_61"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_61",
+        "54_VBHN_điều_9",
+        "54_VBHN_điều_53",
+        "63_VBHN_điều_66",
+        "54_VBHN_điều_35"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07665000000270084
+    },
+    {
+      "sample_id": "legal_vbhq_0124",
+      "question": "Trong trường hợp đã thi hành xong quyết định xử phạt vi phạm hành chính, thì người ra quyết định sau đó có phải làm gì không?",
+      "query_used": "Trong trường hợp đã thi hành xong quyết định xử phạt vi phạm hành chính, thì người ra quyết định sau đó có phải làm gì không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_62"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_73",
+        "63_VBHN_điều_62",
+        "63_VBHN_điều_70",
+        "63_VBHN_điều_68",
+        "63_VBHN_điều_75"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.08125409999047406
+    },
+    {
+      "sample_id": "legal_vbhq_0125",
+      "question": "Vậy trong những trường hợp không có thẩm quyền xử phạt, thì có quy định nào cần lưu ý không?",
+      "query_used": "Vậy trong những trường hợp không có thẩm quyền xử phạt, thì có quy định nào cần lưu ý không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_63"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_63",
+        "63_VBHN_điều_4"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.07646449998719618
+    },
+    {
+      "sample_id": "legal_vbhq_0126",
+      "question": "Vậy thì các yêu cầu và điều kiện về việc quản lý và sử dụng phương tiện, thiết bị kỹ thuật nghiệp vụ này là gì?",
+      "query_used": "Vậy thì các yêu cầu và điều kiện về việc quản lý và sử dụng phương tiện, thiết bị kỹ thuật nghiệp vụ này là gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_64"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_64",
+        "54_VBHN_điều_70",
+        "63_VBHN_điều_128",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_76"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08217449998483062
+    },
+    {
+      "sample_id": "legal_vbhq_0127",
+      "question": "Việc không ra quyết định xử phạt này có ảnh hưởng gì đến việc tịch thu tang vật vi phạm không?",
+      "query_used": "Việc không ra quyết định xử phạt này có ảnh hưởng gì đến việc tịch thu tang vật vi phạm không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_65"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_75",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_126",
+        "63_VBHN_điều_74"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.074061100021936
+    },
+    {
+      "sample_id": "legal_vbhq_0128",
+      "question": "Vậy trong trường hợp nếu cá nhân hoặc tổ chức yêu cầu giải trình thì thời hạn sẽ là bao lâu?",
+      "query_used": "Vậy trong trường hợp nếu cá nhân hoặc tổ chức yêu cầu giải trình thì thời hạn sẽ là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_66"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_61",
+        "63_VBHN_điều_66",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_47",
+        "54_VBHN_điều_60"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07909640000434592
+    },
+    {
+      "sample_id": "legal_vbhq_0129",
+      "question": "Vậy trong trường hợp nhiều cá nhân thực hiện cùng một hành vi vi phạm, cách ra quyết định xử phạt sẽ như thế nào?",
+      "query_used": "Vậy trong trường hợp nhiều cá nhân thực hiện cùng một hành vi vi phạm, cách ra quyết định xử phạt sẽ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_67"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_68",
+        "63_VBHN_điều_3",
+        "63_VBHN_điều_70",
+        "63_VBHN_điều_2"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.08280370000284165
+    },
+    {
+      "sample_id": "legal_vbhq_0130",
+      "question": "Trong trường hợp nào thì cần ban hành một quyết định xử phạt chung cho nhiều cá nhân, tổ chức?",
+      "query_used": "Trong trường hợp nào thì cần ban hành một quyết định xử phạt chung cho nhiều cá nhân, tổ chức?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_68"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_68",
+        "63_VBHN_điều_76",
+        "63_VBHN_điều_72",
+        "63_VBHN_điều_70"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07152640001731925
+    },
+    {
+      "sample_id": "legal_vbhq_0131",
+      "question": "Nếu không thể nộp phạt tại chỗ, những quy định nào sẽ áp dụng cho tình huống đó?",
+      "query_used": "Nếu không thể nộp phạt tại chỗ, những quy định nào sẽ áp dụng cho tình huống đó?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_69"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_78",
+        "63_VBHN_điều_69",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_11"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.06500570001662709
+    },
+    {
+      "sample_id": "legal_vbhq_0132",
+      "question": "Nếu không thể gửi quyết định bằng các hình thức thông thường thì cách nào sẽ được thực hiện?",
+      "query_used": "Nếu không thể gửi quyết định bằng các hình thức thông thường thì cách nào sẽ được thực hiện?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_70"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_70",
+        "54_VBHN_điều_61",
+        "54_VBHN_điều_32",
+        "54_VBHN_điều_44",
+        "54_VBHN_điều_39"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07055889998446219
+    },
+    {
+      "sample_id": "legal_vbhq_0133",
+      "question": "Trong trường hợp người vi phạm không có điều kiện chấp hành, vậy chi phí chuyển hồ sơ sẽ được xử lý như thế nào?",
+      "query_used": "Trong trường hợp người vi phạm không có điều kiện chấp hành, vậy chi phí chuyển hồ sơ sẽ được xử lý như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_71"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_71",
+        "63_VBHN_điều_62",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_56",
+        "63_VBHN_điều_69"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0767313000105787
+    },
+    {
+      "sample_id": "legal_vbhq_0134",
+      "question": "Vậy nội dung công bố này bao gồm những gì?",
+      "query_used": "Vậy nội dung công bố này bao gồm những gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_72"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_72",
+        "54_VBHN_điều_15",
+        "54_VBHN_điều_45",
+        "54_VBHN_điều_18",
+        "54_VBHN_điều_43"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06294149998575449
+    },
+    {
+      "sample_id": "legal_vbhq_0135",
+      "question": "Vậy nếu trong trường hợp họ khiếu nại quyết định xử phạt thì sẽ như thế nào?",
+      "query_used": "Vậy nếu trong trường hợp họ khiếu nại quyết định xử phạt thì sẽ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_73"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_73",
+        "63_VBHN_điều_15",
+        "63_VBHN_điều_68",
+        "63_VBHN_điều_76",
+        "63_VBHN_điều_66"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.067280799994478
+    },
+    {
+      "sample_id": "legal_vbhq_0136",
+      "question": "Nếu trong trường hợp cá nhân, tổ chức cố tình trốn tránh thì thời hiệu sẽ được tính như thế nào?",
+      "query_used": "Nếu trong trường hợp cá nhân, tổ chức cố tình trốn tránh thì thời hiệu sẽ được tính như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_74"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_74",
+        "63_VBHN_điều_6",
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_116",
+        "63_VBHN_điều_66"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0717609999992419
+    },
+    {
+      "sample_id": "legal_vbhq_0137",
+      "question": "Vậy nếu trong trường hợp tổ chức bị xử phạt giải thể thì các hình thức xử phạt nào sẽ được áp dụng?",
+      "query_used": "Vậy nếu trong trường hợp tổ chức bị xử phạt giải thể thì các hình thức xử phạt nào sẽ được áp dụng?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_75"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_75",
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_61",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_71"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07298769999761134
+    },
+    {
+      "sample_id": "legal_vbhq_0138",
+      "question": "Nếu một cá nhân gặp khó khăn về kinh tế do thiên tai, điều kiện nào cần phải có để xác nhận tình trạng đó?",
+      "query_used": "Nếu một cá nhân gặp khó khăn về kinh tế do thiên tai, điều kiện nào cần phải có để xác nhận tình trạng đó?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_76"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_76",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_9",
+        "63_VBHN_điều_79",
+        "63_VBHN_điều_80"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07301100000040606
+    },
+    {
+      "sample_id": "legal_vbhq_0139",
+      "question": "Vậy nếu cá nhân không có khả năng thi hành quyết định phạt thì luật quy định thế nào?",
+      "query_used": "Vậy nếu cá nhân không có khả năng thi hành quyết định phạt thì luật quy định thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_77"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_75",
+        "63_VBHN_điều_73",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_69",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.06701589998556301
+    },
+    {
+      "sample_id": "legal_vbhq_0140",
+      "question": "Trong trường hợp khó khăn về đi lại, quy trình nộp tiền phạt có khác biệt nào không?",
+      "query_used": "Trong trường hợp khó khăn về đi lại, quy trình nộp tiền phạt có khác biệt nào không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_78"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_78",
+        "63_VBHN_điều_79",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_76",
+        "63_VBHN_điều_125"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06613259998266585
+    },
+    {
+      "sample_id": "legal_vbhq_0141",
+      "question": "Ngoài điều kiện về tiền phạt, quy định này còn yêu cầu điều gì đối với đơn đề nghị nộp tiền phạt?",
+      "query_used": "Ngoài điều kiện về tiền phạt, quy định này còn yêu cầu điều gì đối với đơn đề nghị nộp tiền phạt?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_79"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_79",
+        "63_VBHN_điều_78",
+        "63_VBHN_điều_69",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_24"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07143760001054034
+    },
+    {
+      "sample_id": "legal_vbhq_0142",
+      "question": "Vậy trong trường hợp tước quyền, người có thẩm quyền có trách nhiệm gì với giấy phép bị tước đó?",
+      "query_used": "Vậy trong trường hợp tước quyền, người có thẩm quyền có trách nhiệm gì với giấy phép bị tước đó?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_80"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_80",
+        "63_VBHN_điều_25",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_87",
+        "63_VBHN_điều_16"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07492760001332499
+    },
+    {
+      "sample_id": "legal_vbhq_0143",
+      "question": "Liệu rằng trong trường hợp phương tiện vi phạm bị tạm giữ mà có thay đổi thì quy trình xử lý sẽ diễn ra như thế nào?",
+      "query_used": "Liệu rằng trong trường hợp phương tiện vi phạm bị tạm giữ mà có thay đổi thì quy trình xử lý sẽ diễn ra như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_81"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_126",
+        "63_VBHN_điều_81",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_21"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.07751890001236461
+    },
+    {
+      "sample_id": "legal_vbhq_0144",
+      "question": "Trong trường hợp nào thì tiền thu đó phải nộp vào ngân sách nhà nước?",
+      "query_used": "Trong trường hợp nào thì tiền thu đó phải nộp vào ngân sách nhà nước?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_83"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_78",
+        "63_VBHN_điều_83",
+        "63_VBHN_điều_126",
+        "63_VBHN_điều_37",
+        "63_VBHN_điều_69"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.06578069998067804
+    },
+    {
+      "sample_id": "legal_vbhq_0145",
+      "question": "Điều này yêu cầu thông báo cho ai trước khi thực hiện trục xuất?",
+      "query_used": "Điều này yêu cầu thông báo cho ai trước khi thực hiện trục xuất?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_84"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_84",
+        "63_VBHN_điều_130",
+        "63_VBHN_điều_27",
+        "63_VBHN_điều_88",
+        "63_VBHN_điều_61"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06476020000991412
+    },
+    {
+      "sample_id": "legal_vbhq_0146",
+      "question": "Nếu cá nhân không thực hiện biện pháp khắc phục hậu quả, quy định này sẽ xử lý ra sao?",
+      "query_used": "Nếu cá nhân không thực hiện biện pháp khắc phục hậu quả, quy định này sẽ xử lý ra sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_85"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_28",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_31"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06567229999927804
+    },
+    {
+      "sample_id": "legal_vbhq_0147",
+      "question": "Trong số những trường hợp đó, nếu một tổ chức không hoàn trả kinh phí thì sẽ bị cưỡng chế như thế nào?",
+      "query_used": "Trong số những trường hợp đó, nếu một tổ chức không hoàn trả kinh phí thì sẽ bị cưỡng chế như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_86"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_86",
+        "63_VBHN_điều_37",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_29",
+        "63_VBHN_điều_88"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07384930000989698
+    },
+    {
+      "sample_id": "legal_vbhq_0148",
+      "question": "Vậy trong trường hợp của Trưởng đoàn kiểm toán thì ai có thẩm quyền cưỡng chế và theo quy định nào?",
+      "query_used": "Vậy trong trường hợp của Trưởng đoàn kiểm toán thì ai có thẩm quyền cưỡng chế và theo quy định nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_87"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_87",
+        "63_VBHN_điều_88",
+        "63_VBHN_điều_86",
+        "63_VBHN_điều_123",
+        "63_VBHN_điều_85"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07128000000375323
+    },
+    {
+      "sample_id": "legal_vbhq_0149",
+      "question": "Vậy thì nếu tổ chức nào không thực hiện đúng trách nhiệm của mình trong việc phối hợp thi hành quyết định cưỡng chế, họ sẽ phải chịu hậu quả gì?",
+      "query_used": "Vậy thì nếu tổ chức nào không thực hiện đúng trách nhiệm của mình trong việc phối hợp thi hành quyết định cưỡng chế, họ sẽ phải chịu hậu quả gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_88"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_88",
+        "63_VBHN_điều_86",
+        "63_VBHN_điều_87",
+        "63_VBHN_điều_85",
+        "54_VBHN_điều_27"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0758231999934651
+    },
+    {
+      "sample_id": "legal_vbhq_0150",
+      "question": "Vậy thời hạn áp dụng của biện pháp này là bao lâu?",
+      "query_used": "Vậy thời hạn áp dụng của biện pháp này là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_89"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_107",
+        "63_VBHN_điều_89",
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_140",
+        "63_VBHN_điều_91"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.05500180000672117
+    },
+    {
+      "sample_id": "legal_vbhq_0151",
+      "question": "Trong số những đối tượng đó, ai sẽ bị quản lý tại cơ sở trợ giúp trẻ em nếu không có nơi cư trú ổn định?",
+      "query_used": "Trong số những đối tượng đó, ai sẽ bị quản lý tại cơ sở trợ giúp trẻ em nếu không có nơi cư trú ổn định?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_90"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_114",
+        "63_VBHN_điều_136",
+        "63_VBHN_điều_131",
+        "63_VBHN_điều_92"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.08239939998020418
+    },
+    {
+      "sample_id": "legal_vbhq_0152",
+      "question": "Thời hạn áp dụng biện pháp này là bao lâu?",
+      "query_used": "Thời hạn áp dụng biện pháp này là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_91"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_89",
+        "63_VBHN_điều_107",
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_91",
+        "63_VBHN_điều_140"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.05798710000817664
+    },
+    {
+      "sample_id": "legal_vbhq_0153",
+      "question": "Đối với những người từ đủ 16 tuổi đến dưới 18 tuổi, điều kiện nào để bị đưa vào trường giáo dưỡng?",
+      "query_used": "Đối với những người từ đủ 16 tuổi đến dưới 18 tuổi, điều kiện nào để bị đưa vào trường giáo dưỡng?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_92"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_92",
+        "63_VBHN_điều_132",
+        "63_VBHN_điều_91",
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_90"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.11558009998407215
+    },
+    {
+      "sample_id": "legal_vbhq_0154",
+      "question": "Thời gian áp dụng biện pháp đó là bao lâu?",
+      "query_used": "Thời gian áp dụng biện pháp đó là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_93"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_107",
+        "63_VBHN_điều_89",
+        "63_VBHN_điều_115",
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_91"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06132490001618862
+    },
+    {
+      "sample_id": "legal_vbhq_0155",
+      "question": "Như vậy, quy định này không áp dụng đối với những ai?",
+      "query_used": "Như vậy, quy định này không áp dụng đối với những ai?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_94"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_5",
+        "63_VBHN_điều_92",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_94",
+        "54_VBHN_điều_61"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.06586530001368374
+    },
+    {
+      "sample_id": "legal_vbhq_0156",
+      "question": "Vậy thời hạn áp dụng biện pháp này là bao lâu?",
+      "query_used": "Vậy thời hạn áp dụng biện pháp này là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_95"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_107",
+        "63_VBHN_điều_89",
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_91",
+        "63_VBHN_điều_140"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06351609999546781
+    },
+    {
+      "sample_id": "legal_vbhq_0157",
+      "question": "Vậy còn những ai thì không bị áp dụng biện pháp này?",
+      "query_used": "Vậy còn những ai thì không bị áp dụng biện pháp này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_96"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_92",
+        "63_VBHN_điều_5",
+        "63_VBHN_điều_11",
+        "63_VBHN_điều_134"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06272299998090602
+    },
+    {
+      "sample_id": "legal_vbhq_0158",
+      "question": "Nếu người vi phạm là người chưa thành niên, thì hồ sơ đề nghị sẽ cần những tài liệu gì thêm?",
+      "query_used": "Nếu người vi phạm là người chưa thành niên, thì hồ sơ đề nghị sẽ cần những tài liệu gì thêm?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_97"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_97",
+        "63_VBHN_điều_137",
+        "63_VBHN_điều_22",
+        "63_VBHN_điều_90",
+        "63_VBHN_điều_103"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07089400000404567
+    },
+    {
+      "sample_id": "legal_vbhq_0159",
+      "question": "Nếu trong trường hợp người được giáo dục không có nơi cư trú ổn định, thì quy định sẽ như thế nào?",
+      "query_used": "Nếu trong trường hợp người được giáo dục không có nơi cư trú ổn định, thì quy định sẽ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_98"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_114",
+        "63_VBHN_điều_98",
+        "63_VBHN_điều_100",
+        "63_VBHN_điều_131"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.07329289999324828
+    },
+    {
+      "sample_id": "legal_vbhq_0160",
+      "question": "Vậy hồ sơ đề nghị áp dụng biện pháp đưa vào cơ sở giáo dục bắt buộc thì cần những tài liệu gì?",
+      "query_used": "Vậy hồ sơ đề nghị áp dụng biện pháp đưa vào cơ sở giáo dục bắt buộc thì cần những tài liệu gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_100"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_100",
+        "63_VBHN_điều_102",
+        "63_VBHN_điều_93",
+        "63_VBHN_điều_118",
+        "63_VBHN_điều_114"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06865239999024197
+    },
+    {
+      "sample_id": "legal_vbhq_0161",
+      "question": "Vậy hồ sơ đề nghị đó cần những nội dung gì?",
+      "query_used": "Vậy hồ sơ đề nghị đó cần những nội dung gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_102"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_97",
+        "63_VBHN_điều_100",
+        "54_VBHN_điều_31",
+        "54_VBHN_điều_34",
+        "63_VBHN_điều_103"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06144700001459569
+    },
+    {
+      "sample_id": "legal_vbhq_0162",
+      "question": "Vậy tài liệu chứng minh tình trạng nghiện ma túy hiện tại là gì và cách thực hiện như thế nào?",
+      "query_used": "Vậy tài liệu chứng minh tình trạng nghiện ma túy hiện tại là gì và cách thực hiện như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_103"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_103",
+        "63_VBHN_điều_96",
+        "63_VBHN_điều_118",
+        "63_VBHN_điều_90",
+        "63_VBHN_điều_104"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07608210001490079
+    },
+    {
+      "sample_id": "legal_vbhq_0163",
+      "question": "Vậy thì hồ sơ này bao gồm những tài liệu gì?",
+      "query_used": "Vậy thì hồ sơ này bao gồm những tài liệu gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_104"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_34",
+        "54_VBHN_điều_31",
+        "63_VBHN_điều_100",
+        "63_VBHN_điều_57",
+        "63_VBHN_điều_103"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06417359999613836
+    },
+    {
+      "sample_id": "legal_vbhq_0164",
+      "question": "Vậy trong trường hợp cần đưa vào cơ sở giáo dục bắt buộc thì ai sẽ là cơ quan có thẩm quyền quyết định?",
+      "query_used": "Vậy trong trường hợp cần đưa vào cơ sở giáo dục bắt buộc thì ai sẽ là cơ quan có thẩm quyền quyết định?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_105"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_132",
+        "63_VBHN_điều_114",
+        "63_VBHN_điều_113",
+        "63_VBHN_điều_102",
+        "63_VBHN_điều_111"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06811349999043159
+    },
+    {
+      "sample_id": "legal_vbhq_0165",
+      "question": "Vậy quy định này áp dụng cho những trường hợp nào?",
+      "query_used": "Vậy quy định này áp dụng cho những trường hợp nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_106"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_92",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_90"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06278020000900142
+    },
+    {
+      "sample_id": "legal_vbhq_0166",
+      "question": "Liệu quyết định đó có được gửi cho người đại diện hợp pháp không?",
+      "query_used": "Liệu quyết định đó có được gửi cho người đại diện hợp pháp không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_107"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_107",
+        "63_VBHN_điều_98",
+        "63_VBHN_điều_111",
+        "54_VBHN_điều_44",
+        "63_VBHN_điều_70"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06358640000689775
+    },
+    {
+      "sample_id": "legal_vbhq_0167",
+      "question": "Vậy nếu người phải chấp hành quyết định đó trốn tránh, thì thời hiệu thi hành sẽ được tính như thế nào?",
+      "query_used": "Vậy nếu người phải chấp hành quyết định đó trốn tránh, thì thời hiệu thi hành sẽ được tính như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_108"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_74",
+        "63_VBHN_điều_116",
+        "63_VBHN_điều_73",
+        "63_VBHN_điều_6"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06554969999706373
+    },
+    {
+      "sample_id": "legal_vbhq_0168",
+      "question": "Nhưng trách nhiệm cụ thể của người được phân công giúp đỡ là gì?",
+      "query_used": "Nhưng trách nhiệm cụ thể của người được phân công giúp đỡ là gì?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_109"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_109",
+        "63_VBHN_điều_98",
+        "54_VBHN_điều_12",
+        "54_VBHN_điều_28",
+        "63_VBHN_điều_97"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0630609999934677
+    },
+    {
+      "sample_id": "legal_vbhq_0169",
+      "question": "Vậy thời hạn chấp hành quyết định sẽ được tính từ khi nào?",
+      "query_used": "Vậy thời hạn chấp hành quyết định sẽ được tính từ khi nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_110"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_73",
+        "63_VBHN_điều_74",
+        "63_VBHN_điều_7",
+        "63_VBHN_điều_110"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.2,
+      "latency_seconds": 0.06377249999786727
+    },
+    {
+      "sample_id": "legal_vbhq_0170",
+      "question": "Trong trường hợp nào thì người phải chấp hành quyết định sẽ được miễn chấp hành hành vi đó?",
+      "query_used": "Trong trường hợp nào thì người phải chấp hành quyết định sẽ được miễn chấp hành hành vi đó?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_111"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_111",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_112",
+        "63_VBHN_điều_124",
+        "63_VBHN_điều_73"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06618579998030327
+    },
+    {
+      "sample_id": "legal_vbhq_0171",
+      "question": "Nếu người đó bị ốm nặng thì sẽ như thế nào?",
+      "query_used": "Nếu người đó bị ốm nặng thì sẽ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_112"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_112",
+        "63_VBHN_điều_111",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_10",
+        "63_VBHN_điều_92"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06339609998394735
+    },
+    {
+      "sample_id": "legal_vbhq_0172",
+      "question": "Trong trường hợp người đó vi phạm trong thời gian hoãn, sẽ xảy ra điều gì tiếp theo?",
+      "query_used": "Trong trường hợp người đó vi phạm trong thời gian hoãn, sẽ xảy ra điều gì tiếp theo?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_113"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_7",
+        "63_VBHN_điều_6",
+        "63_VBHN_điều_58",
+        "63_VBHN_điều_66",
+        "63_VBHN_điều_137"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07033769998815842
+    },
+    {
+      "sample_id": "legal_vbhq_0173",
+      "question": "Vậy trong trường hợp họ đã chấp hành quyết định đưa vào trường giáo dưỡng thì sẽ có quy trình như thế nào?",
+      "query_used": "Vậy trong trường hợp họ đã chấp hành quyết định đưa vào trường giáo dưỡng thì sẽ có quy trình như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_114"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_110",
+        "63_VBHN_điều_132",
+        "63_VBHN_điều_113",
+        "63_VBHN_điều_114",
+        "63_VBHN_điều_91"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.07061629998497665
+    },
+    {
+      "sample_id": "legal_vbhq_0174",
+      "question": "Thời gian tạm thời đưa ra khỏi nơi chấp hành biện pháp xử lý hành chính như thế nào?",
+      "query_used": "Thời gian tạm thời đưa ra khỏi nơi chấp hành biện pháp xử lý hành chính như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_115"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_115",
+        "63_VBHN_điều_116",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_74",
+        "63_VBHN_điều_122"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06705690000671893
+    },
+    {
+      "sample_id": "legal_vbhq_0175",
+      "question": "Nếu đã ra quyết định xử lý hành chính mà vẫn phát hiện dấu hiệu tội phạm, thì quy trình sẽ như thế nào?",
+      "query_used": "Nếu đã ra quyết định xử lý hành chính mà vẫn phát hiện dấu hiệu tội phạm, thì quy trình sẽ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_116"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_116",
+        "63_VBHN_điều_62",
+        "63_VBHN_điều_75",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07188109998241998
+    },
+    {
+      "sample_id": "legal_vbhq_0176",
+      "question": "Nếu như trường hợp đó xảy ra, thì có những quy định nào về việc thi hành biện pháp xử lý hành chính tiếp theo không?",
+      "query_used": "Nếu như trường hợp đó xảy ra, thì có những quy định nào về việc thi hành biện pháp xử lý hành chính tiếp theo không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_117"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07757680001668632
+    },
+    {
+      "sample_id": "legal_vbhq_0177",
+      "question": "Vậy nếu người đó nghiện ma túy và côn đồ hung hãn thì sao?",
+      "query_used": "Vậy nếu người đó nghiện ma túy và côn đồ hung hãn thì sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_118"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_118",
+        "63_VBHN_điều_103",
+        "63_VBHN_điều_96",
+        "63_VBHN_điều_90",
+        "63_VBHN_điều_113"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06449920000159182
+    },
+    {
+      "sample_id": "legal_vbhq_0178",
+      "question": "Trong số những biện pháp đó, có biện pháp nào áp dụng đối với người nước ngoài không?",
+      "query_used": "Trong số những biện pháp đó, có biện pháp nào áp dụng đối với người nước ngoài không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_119"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_130",
+        "63_VBHN_điều_119",
+        "63_VBHN_điều_20",
+        "63_VBHN_điều_5",
+        "63_VBHN_điều_135"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.06826349999755621
+    },
+    {
+      "sample_id": "legal_vbhq_0179",
+      "question": "Ngoài ra, trong trường hợp nào thì biện pháp ngăn chặn này được áp dụng?",
+      "query_used": "Ngoài ra, trong trường hợp nào thì biện pháp ngăn chặn này được áp dụng?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_120"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_121",
+        "63_VBHN_điều_119",
+        "63_VBHN_điều_120",
+        "63_VBHN_điều_118",
+        "63_VBHN_điều_130"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.06888320000143722
+    },
+    {
+      "sample_id": "legal_vbhq_0180",
+      "question": "Nếu như không còn cần thiết, ai có quyền quyết định hủy bỏ biện pháp đó?",
+      "query_used": "Nếu như không còn cần thiết, ai có quyền quyết định hủy bỏ biện pháp đó?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_121"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_121",
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_35",
+        "63_VBHN_điều_63",
+        "63_VBHN_điều_55"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0674855999823194
+    },
+    {
+      "sample_id": "legal_vbhq_0181",
+      "question": "Trong trường hợp xác định tình trạng nghiện ma túy, thời hạn tạm giữ được quy định như thế nào?",
+      "query_used": "Trong trường hợp xác định tình trạng nghiện ma túy, thời hạn tạm giữ được quy định như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_122"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_122",
+        "63_VBHN_điều_103",
+        "63_VBHN_điều_96",
+        "63_VBHN_điều_90",
+        "63_VBHN_điều_112"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07016860001021996
+    },
+    {
+      "sample_id": "legal_vbhq_0182",
+      "question": "Vậy trong trường hợp họ vắng mặt, ai sẽ thực hiện quyền tạm giữ này?",
+      "query_used": "Vậy trong trường hợp họ vắng mặt, ai sẽ thực hiện quyền tạm giữ này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_123"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_123",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_130",
+        "63_VBHN_điều_115",
+        "63_VBHN_điều_113"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06554330000653863
+    },
+    {
+      "sample_id": "legal_vbhq_0183",
+      "question": "Luật này quy định ai sẽ thực hiện việc áp giải người vi phạm và điều này được quy định chi tiết bởi ai?",
+      "query_used": "Luật này quy định ai sẽ thực hiện việc áp giải người vi phạm và điều này được quy định chi tiết bởi ai?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_124"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_124",
+        "63_VBHN_điều_54",
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_61",
+        "63_VBHN_điều_16"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0741383999993559
+    },
+    {
+      "sample_id": "legal_vbhq_0184",
+      "question": "Nếu đã có quyết định xử phạt thì thời hạn tạm giữ sẽ như thế nào?",
+      "query_used": "Nếu đã có quyết định xử phạt thì thời hạn tạm giữ sẽ như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_125"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_66",
+        "63_VBHN_điều_74",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_116",
+        "63_VBHN_điều_7"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.0649042000004556
+    },
+    {
+      "sample_id": "legal_vbhq_0185",
+      "question": "Trong trường hợp nào tang vật sẽ bị tịch thu và ai sẽ là người nhận lại chúng?",
+      "query_used": "Trong trường hợp nào tang vật sẽ bị tịch thu và ai sẽ là người nhận lại chúng?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_126"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_126",
+        "63_VBHN_điều_81",
+        "63_VBHN_điều_26",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06592989998171106
+    },
+    {
+      "sample_id": "legal_vbhq_0186",
+      "question": "Trường hợp nào có thể tiến hành khám người mà không cần quyết định bằng văn bản?",
+      "query_used": "Trường hợp nào có thể tiến hành khám người mà không cần quyết định bằng văn bản?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_127"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_127",
+        "63_VBHN_điều_128",
+        "63_VBHN_điều_129",
+        "63_VBHN_điều_111",
+        "54_VBHN_điều_52"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.0663442000222858
+    },
+    {
+      "sample_id": "legal_vbhq_0187",
+      "question": "Nếu không tiến hành khám ngay thì sẽ có điều gì xảy ra với tang vật vi phạm hành chính?",
+      "query_used": "Nếu không tiến hành khám ngay thì sẽ có điều gì xảy ra với tang vật vi phạm hành chính?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_128"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_128",
+        "63_VBHN_điều_127",
+        "63_VBHN_điều_129",
+        "63_VBHN_điều_125",
+        "63_VBHN_điều_65"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06683159997919574
+    },
+    {
+      "sample_id": "legal_vbhq_0188",
+      "question": "Ngoài điều kiện đó, còn quy định gì về việc có mặt của người chứng kiến trong quá trình khám không?",
+      "query_used": "Ngoài điều kiện đó, còn quy định gì về việc có mặt của người chứng kiến trong quá trình khám không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_129"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_128",
+        "63_VBHN_điều_129",
+        "63_VBHN_điều_127",
+        "63_VBHN_điều_81",
+        "63_VBHN_điều_94"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07094860001234338
+    },
+    {
+      "sample_id": "legal_vbhq_0189",
+      "question": "Luật này quy định những biện pháp nào để quản lý người nước ngoài trong thời gian làm thủ tục trục xuất?",
+      "query_used": "Luật này quy định những biện pháp nào để quản lý người nước ngoài trong thời gian làm thủ tục trục xuất?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_130"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_130",
+        "63_VBHN_điều_119",
+        "63_VBHN_điều_84",
+        "63_VBHN_điều_27",
+        "63_VBHN_điều_131"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07302250000066124
+    },
+    {
+      "sample_id": "legal_vbhq_0190",
+      "question": "Nếu gia đình không đồng ý quản lý thì ai sẽ chịu trách nhiệm quản lý trong thời gian này?",
+      "query_used": "Nếu gia đình không đồng ý quản lý thì ai sẽ chịu trách nhiệm quản lý trong thời gian này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_131"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_140",
+        "63_VBHN_điều_131",
+        "63_VBHN_điều_109",
+        "63_VBHN_điều_130",
+        "63_VBHN_điều_24"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.06878510001115501
+    },
+    {
+      "sample_id": "legal_vbhq_0191",
+      "question": "Vậy nếu họ đang chấp hành tại trường giáo dưỡng mà bỏ trốn thì ai sẽ là người ra quyết định truy tìm?",
+      "query_used": "Vậy nếu họ đang chấp hành tại trường giáo dưỡng mà bỏ trốn thì ai sẽ là người ra quyết định truy tìm?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_132"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_132",
+        "63_VBHN_điều_113",
+        "63_VBHN_điều_115",
+        "63_VBHN_điều_112",
+        "63_VBHN_điều_110"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06923839999944903
+    },
+    {
+      "sample_id": "legal_vbhq_0192",
+      "question": "Vậy, điều này có nghĩa là các quy định khác cũng được áp dụng cho hành vi đó đúng không?",
+      "query_used": "Vậy, điều này có nghĩa là các quy định khác cũng được áp dụng cho hành vi đó đúng không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_133"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_58",
+        "63_VBHN_điều_21",
+        "63_VBHN_điều_12",
+        "63_VBHN_điều_32",
+        "63_VBHN_điều_4"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07052869998733513
+    },
+    {
+      "sample_id": "legal_vbhq_0193",
+      "question": "Trong trường hợp nào thì việc xử lý này sẽ được thực hiện nhằm giáo dục và phát triển người chưa thành niên?",
+      "query_used": "Trong trường hợp nào thì việc xử lý này sẽ được thực hiện nhằm giáo dục và phát triển người chưa thành niên?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_134"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_136",
+        "63_VBHN_điều_134",
+        "63_VBHN_điều_138",
+        "63_VBHN_điều_140",
+        "63_VBHN_điều_135"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07543379999697208
+    },
+    {
+      "sample_id": "legal_vbhq_0194",
+      "question": "Trong trường hợp đó, những biện pháp khắc phục hậu quả nào sẽ được thực hiện?",
+      "query_used": "Trong trường hợp đó, những biện pháp khắc phục hậu quả nào sẽ được thực hiện?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_135"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_28",
+        "63_VBHN_điều_85",
+        "63_VBHN_điều_135",
+        "63_VBHN_điều_77",
+        "63_VBHN_điều_117"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.07039410001016222
+    },
+    {
+      "sample_id": "legal_vbhq_0195",
+      "question": "Vậy trong trường hợp người chưa thành niên không có nơi cư trú ổn định, họ sẽ được xử lý như thế nào?",
+      "query_used": "Vậy trong trường hợp người chưa thành niên không có nơi cư trú ổn định, họ sẽ được xử lý như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_136"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_136",
+        "63_VBHN_điều_137",
+        "63_VBHN_điều_114",
+        "63_VBHN_điều_134",
+        "63_VBHN_điều_135"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.07552500002202578
+    },
+    {
+      "sample_id": "legal_vbhq_0196",
+      "question": "Vậy trong trường hợp họ bị áp dụng biện pháp xử lý hành chính thì thời gian áp dụng là bao lâu?",
+      "query_used": "Vậy trong trường hợp họ bị áp dụng biện pháp xử lý hành chính thì thời gian áp dụng là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_137"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_6",
+        "63_VBHN_điều_137",
+        "63_VBHN_điều_7",
+        "63_VBHN_điều_116",
+        "63_VBHN_điều_117"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.07305550001910888
+    },
+    {
+      "sample_id": "legal_vbhq_0197",
+      "question": "Nếu một trường hợp cụ thể xảy ra, thì biện pháp nào sẽ được áp dụng đầu tiên?",
+      "query_used": "Nếu một trường hợp cụ thể xảy ra, thì biện pháp nào sẽ được áp dụng đầu tiên?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_138"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_117",
+        "63_VBHN_điều_59",
+        "63_VBHN_điều_118",
+        "63_VBHN_điều_52",
+        "54_VBHN_điều_52"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.07063000000198372
+    },
+    {
+      "sample_id": "legal_vbhq_0198",
+      "question": "Vậy thì, những điều kiện nào để áp dụng biện pháp nhắc nhở này?",
+      "query_used": "Vậy thì, những điều kiện nào để áp dụng biện pháp nhắc nhở này?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_139"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_139",
+        "63_VBHN_điều_97",
+        "63_VBHN_điều_94",
+        "63_VBHN_điều_138",
+        "63_VBHN_điều_2"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 1.0,
+      "latency_seconds": 0.06828129998757504
+    },
+    {
+      "sample_id": "legal_vbhq_0199",
+      "question": "Nếu người chưa thành niên không hối lỗi, vậy thì biện pháp này có còn áp dụng không?",
+      "query_used": "Nếu người chưa thành niên không hối lỗi, vậy thì biện pháp này có còn áp dụng không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_140"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_134",
+        "63_VBHN_điều_137",
+        "63_VBHN_điều_139",
+        "63_VBHN_điều_140",
+        "63_VBHN_điều_135"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.25,
+      "latency_seconds": 0.06872289997409098
+    },
+    {
+      "sample_id": "legal_vbhq_0200",
+      "question": "Vậy thời hạn áp dụng biện pháp này là bao lâu?",
+      "query_used": "Vậy thời hạn áp dụng biện pháp này là bao lâu?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_140"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_107",
+        "63_VBHN_điều_89",
+        "63_VBHN_điều_108",
+        "63_VBHN_điều_91",
+        "63_VBHN_điều_140"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.2,
+      "latency_seconds": 0.06050870000035502
+    },
+    {
+      "sample_id": "legal_vbhq_0201",
+      "question": "Vậy những quy định liên quan đến biện pháp xử lý hành chính thì sao?",
+      "query_used": "Vậy những quy định liên quan đến biện pháp xử lý hành chính thì sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_141"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_1",
+        "63_VBHN_điều_141",
+        "63_VBHN_điều_12",
+        "63_VBHN_điều_21"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.3333333333333333,
+      "latency_seconds": 0.06432380000478588
+    },
+    {
+      "sample_id": "legal_vbhq_0202",
+      "question": "Vậy còn Luật Thủy sản số 18/2017/QH14 thì sao?",
+      "query_used": "Vậy còn Luật Thủy sản số 18/2017/QH14 thì sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_142"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_khác",
+        "63_VBHN_điều_142",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_72",
+        "54_VBHN_khác"
+      ],
+      "hit": 1,
+      "recall": 1.0,
+      "mrr": 0.5,
+      "latency_seconds": 0.06360480000148527
+    },
+    {
+      "sample_id": "legal_vbhq_0203",
+      "question": "Vậy thì, văn bản nào sẽ hết hiệu lực khi luật này có hiệu lực?",
+      "query_used": "Vậy thì, văn bản nào sẽ hết hiệu lực khi luật này có hiệu lực?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_104"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_57",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_56",
+        "54_VBHN_điều_53",
+        "54_VBHN_điều_72"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06624190000002272
+    },
+    {
+      "sample_id": "legal_vbhq_0204",
+      "question": "Vậy còn các loại giấy phép trước đây thì sao, chúng có được tiếp tục sử dụng không?",
+      "query_used": "Vậy còn các loại giấy phép trước đây thì sao, chúng có được tiếp tục sử dụng không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_105"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_80",
+        "63_VBHN_điều_25",
+        "63_VBHN_điều_2",
+        "54_VBHN_điều_58",
+        "63_VBHN_điều_125"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06264809999265708
+    },
+    {
+      "sample_id": "legal_vbhq_0205",
+      "question": "Vậy quy định này có ảnh hưởng gì đến các hành vi vi phạm trước đó không?",
+      "query_used": "Vậy quy định này có ảnh hưởng gì đến các hành vi vi phạm trước đó không?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_3"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_90",
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_92",
+        "63_VBHN_điều_1"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06586309999693185
+    },
+    {
+      "sample_id": "legal_vbhq_0206",
+      "question": "Vậy trường hợp nào sẽ có hiệu lực sau đó?",
+      "query_used": "Vậy trường hợp nào sẽ có hiệu lực sau đó?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_3"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_54",
+        "63_VBHN_điều_141",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_55",
+        "54_VBHN_điều_56"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.058242400002200156
+    },
+    {
+      "sample_id": "legal_vbhq_0207",
+      "question": "Vậy còn chứng chỉ vô tuyến điện viên đã cấp thì như thế nào?",
+      "query_used": "Vậy còn chứng chỉ vô tuyến điện viên đã cấp thì như thế nào?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_4"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_142",
+        "63_VBHN_khác",
+        "63_VBHN_điều_80",
+        "63_VBHN_điều_114",
+        "63_VBHN_điều_2"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.05906810000305995
+    },
+    {
+      "sample_id": "legal_vbhq_0208",
+      "question": "Vậy văn bản trước đó sẽ ra sao khi luật này có hiệu lực?",
+      "query_used": "Vậy văn bản trước đó sẽ ra sao khi luật này có hiệu lực?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_117"
+      ],
+      "retrieved_cids": [
+        "54_VBHN_điều_72",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_57",
+        "54_VBHN_điều_55"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.059278400003677234
+    },
+    {
+      "sample_id": "legal_vbhq_0209",
+      "question": "Vậy trong trường hợp nào thì có quy định khác về hiệu lực thi hành?",
+      "query_used": "Vậy trong trường hợp nào thì có quy định khác về hiệu lực thi hành?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_118"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_141",
+        "54_VBHN_điều_71",
+        "54_VBHN_điều_54",
+        "54_VBHN_điều_58",
+        "54_VBHN_điều_57"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06640579999657348
+    },
+    {
+      "sample_id": "legal_vbhq_0210",
+      "question": "Vậy quy định về thẩm quyền xử phạt theo luật này ra sao?",
+      "query_used": "Vậy quy định về thẩm quyền xử phạt theo luật này ra sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_2"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_4",
+        "63_VBHN_điều_52",
+        "63_VBHN_điều_63",
+        "63_VBHN_điều_78",
+        "63_VBHN_điều_1"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.06518369997502305
+    },
+    {
+      "sample_id": "legal_vbhq_0211",
+      "question": "Vậy còn trong trường hợp vi phạm hành chính đã có quyết định xử phạt thì sẽ ra sao?",
+      "query_used": "Vậy còn trong trường hợp vi phạm hành chính đã có quyết định xử phạt thì sẽ ra sao?",
+      "ground_truth_cids": [
+        "63_VBHN_điều_3"
+      ],
+      "retrieved_cids": [
+        "63_VBHN_điều_67",
+        "63_VBHN_điều_66",
+        "63_VBHN_điều_65",
+        "63_VBHN_điều_63",
+        "63_VBHN_điều_73"
+      ],
+      "hit": 0,
+      "recall": 0.0,
+      "mrr": 0.0,
+      "latency_seconds": 0.064504100009799
+    }
+  ]
+}

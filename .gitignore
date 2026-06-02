@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+rag_env/
+venv/
+.venv/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and runtime artifacts
+logs/
+*.log
+
+# Index artifacts
+faiss_index/
+indexes/
+runtime_indexes/
+data/indexes/
+*.faiss
+*.pkl
+chunks_metadata.json
+manifest.json
+
+# Generated data snapshots
+runtime_data/
+data/submissions/
+
+# Frontend install artifacts
+legacy/chatRAG/node_modules/
+
+# Notebook state
+.ipynb_checkpoints/

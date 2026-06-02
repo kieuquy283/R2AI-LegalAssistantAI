@@ -1,0 +1,78 @@
+# Changelog
+
+## 2026-06-02 - Task 1
+- Changed:
+  - Standardized the legal-assistant workspace layout around `src/legal_rag`, `configs/`, `data/`, and `legacy/`.
+  - Updated `rag.config.paths` and retrieval defaults to use `data/indexes/default` and `data/logs`.
+  - Replaced the old README with a legal-assistant workflow README.
+  - Added import bootstrap for `legal_rag` and pytest path setup.
+  - Simplified `rag.ingestion.chunkers` to use a local splitter fallback instead of import-time LangChain text splitter dependency.
+  - Switched `rag.pipelines.factory` default mode back to `legacy` so the test suite and low-dependency workspace remain stable by default.
+- Removed:
+  - Root-level demo/API surfaces from the active workspace.
+  - Temporary root test files and empty root `indexes/` directory.
+- Added:
+  - `docs/project_audit.md`
+  - `docs/architecture.md`
+  - `docs/metadata_schema.md`
+  - `docs/answer_generation.md`
+  - `docs/evaluation.md`
+  - `legacy/README.md`
+  - `configs/retrieval.yaml`
+  - `configs/generation.yaml`
+  - `configs/evaluation.yaml`
+  - `legal_rag/__init__.py`
+  - `src/legal_rag/...` package skeleton
+  - `.env.example`
+  - `sitecustomize.py`
+  - `tests/conftest.py`
+- Tests:
+  - `python -m compileall rag src scripts tests`
+  - `python - <<'PY' ... import legal_rag ... PY`
+  - `pytest -q`
+- Notes:
+  - Moved `app/`, `chatRAG/`, logs, and runtime snapshots into `legacy/`.
+  - Kept the existing Python RAG stack and retrieval modules intact; refactor was organizational first.
+  - A locked root `__pycache__/` directory still remained after cleanup attempts, but it does not affect imports or test results.
+
+## 2026-06-02 - Task 2
+- Changed:
+  - Added normalized legal metadata schema, article-level aggregation, deterministic legal answer generation, citation validation, quality checks, submission export, and article-level evaluation.
+  - Added CLI scripts for `build_corpus`, `generate_submission`, `validate_submission`, and `evaluate_submission`.
+  - Tuned keyword-based article retrieval to favor article-title matches for local legal QA smoke tests.
+- Removed:
+  - No existing source files were deleted in Task 2.
+- Added:
+  - `src/legal_rag/corpus/schema.py`
+  - `src/legal_rag/corpus/normalize.py`
+  - `src/legal_rag/retrieval/keyword.py`
+  - `src/legal_rag/aggregation/article.py`
+  - `src/legal_rag/generation/answer_generator.py`
+  - `src/legal_rag/generation/citation_validator.py`
+  - `src/legal_rag/generation/quality_checker.py`
+  - `src/legal_rag/submission/schema.py`
+  - `src/legal_rag/submission/exporter.py`
+  - `src/legal_rag/submission/validator.py`
+  - `src/legal_rag/evaluation/metrics.py`
+  - `src/legal_rag/evaluation/evaluator.py`
+  - `tests/test_metadata_schema.py`
+  - `tests/test_article_aggregation.py`
+  - `tests/test_submission_format.py`
+  - `tests/test_evaluation_metrics.py`
+  - `data/raw/sample_questions.json`
+  - `data/processed/sample_gold.json`
+  - `data/processed/articles.jsonl`
+  - `data/submissions/results.json`
+  - `data/submissions/sample_results.json`
+  - `data/submissions/eval_report.json`
+  - `data/submissions/sample_eval_report.json`
+- Tests:
+  - `python scripts/build_corpus.py --input data/legal_corpus_chunks.json --output data/processed/articles.jsonl`
+  - `pytest -q`
+  - `python -m compileall rag src scripts tests`
+  - `python scripts/generate_submission.py --input data/raw/sample_questions.json --output data/submissions/sample_results.json --config configs/retrieval.yaml --metadata data/processed/articles.jsonl`
+  - `python scripts/validate_submission.py --input data/submissions/sample_results.json`
+  - `python scripts/evaluate_submission.py --pred data/submissions/sample_results.json --gold data/processed/sample_gold.json --output data/submissions/sample_eval_report.json`
+- Notes:
+  - Sample end-to-end evaluation reached `macro_precision=0.6111`, `macro_recall=1.0000`, `macro_f2=0.8492` on the 3-question smoke set.
+  - No new dependency was added.

@@ -1,0 +1,8 @@
+evaluation:
+  retrieval_top_k: 5
+  metrics:
+    - precision_macro
+    - recall_macro
+    - f2_macro
+  gold_path: data/processed/sample_gold.json
+  predictions_path: data/submissions/sample_results.json

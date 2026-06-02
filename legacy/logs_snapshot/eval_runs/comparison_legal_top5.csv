@@ -1,0 +1,9 @@
+model_name,hit@5,recall@5,mrr,avg_latency_seconds,output_file
+model_1_baseline_dense_faiss,0.712264,0.712264,0.582547,0.070266,model_1_baseline_legal_top5.json
+model_2_rewrite_dense_faiss,0.811321,0.811321,0.705110,0.935359,model_2_rewrite_dense_legal_top5.json
+model_3_hybrid_retrieval,0.806604,0.806604,0.643711,0.076326,model_3_hybrid_legal_top5.json
+model_4_hybrid_rerank,0.825472,0.825472,0.662500,0.074551,model_4_hybrid_rerank_legal_top5.json
+model_5_hybrid_history_rewrite_hybrid,0.806604,0.806604,0.643711,6.811128,model_5_hybrid_history_legal_top5.json
+model_6_multi_query_hybrid,0.844340,0.844340,0.748270,3.932464,model_6_multi_query_hybrid_legal_top5.json
+model_7_full_modular_pipeline,0.858491,0.858491,0.747248,21.687215,model_7_full_pipeline_legal_top5.json
+model_8_hyde_hybrid_rerank,0.858491,0.858491,0.751730,38.141371,model_8_hyde_legal_top5.json

@@ -1,0 +1,10 @@
+generation:
+  llm_model: Qwen2.5-7B-Instruct
+  grounded_only: true
+  require_legal_citations: true
+  answer_sections:
+    - ket_luan_ngan
+    - can_cu_phap_ly
+    - giai_thich_de_hieu
+    - goi_y_ap_dung_thuc_te
+    - luu_y
