@@ -107,6 +107,16 @@ python scripts/evaluate_submission.py \
 - Do not run live crawling during evaluation
 - Do not bypass login, paywall, or captcha protections
 
+## Collect Document URLs
+
+`src/ingestion/collect_urls.py` reads `data/sources/sources.yaml`, crawls configured public search pages, extracts detail-document links, deduplicates them, and writes `data/raw/document_urls.jsonl` plus `data/raw/document_urls_report.json`.
+
+- Task Collect Document URLs: `DONE`
+- Source Registry validation: `PASSED`
+- Unit tests: `PASSED`
+- Test crawl: `PASSED`
+- Output: `data/raw/document_urls.jsonl`
+
 ## Coding conventions
 
 - Preserve the current Python stack and avoid framework migrations.

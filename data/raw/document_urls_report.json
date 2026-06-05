@@ -1,0 +1,19 @@
+{
+  "task": "collect_document_urls",
+  "created_at": "2026-06-05T15:46:19.636201+00:00",
+  "sources_path": "data/sources/sources.yaml",
+  "output_path": "data/raw/document_urls.jsonl",
+  "total_sources": 1,
+  "total_unique_document_urls": 16,
+  "source_reports": [
+    {
+      "source_id": "luatvietnam_business_law_search_luat_doanh_nghiep",
+      "source_name": "LuatVietnam - Tìm kiếm Luật Doanh nghiệp",
+      "domain": "business_law",
+      "skipped": false,
+      "pages_crawled": 1,
+      "errors": 0,
+      "records_found": 16
+    }
+  ]
+}

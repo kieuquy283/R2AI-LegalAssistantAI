@@ -29,6 +29,8 @@ docx2txt>=0.8
 # Utils
 tqdm>=4.66.0
 pyyaml>=6.0.0
+beautifulsoup4>=4.14.0
+crawl4ai>=0.8.9
 
 sentence-transformers
 torch

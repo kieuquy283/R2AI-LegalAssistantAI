@@ -26,6 +26,11 @@ Thumbs.db
 # Logs and runtime artifacts
 logs/
 *.log
+data/logs/
+data/.crawl4ai/
+data/playwright-browsers/
+.tmp_collect_urls/
+.tmp_source_registry/
 
 # Index artifacts
 faiss_index/
