@@ -98,6 +98,15 @@ python scripts/evaluate_submission.py \
 3. Update `CHANGELOG.md` after each task-sized change.
 4. Prefer package imports such as `from legal_rag.retrieval.hybrid import HybridRetriever`.
 
+## Source Registry
+
+`src/ingestion/source_registry.py` manages offline crawl sources declared in `data/sources/sources.yaml`.
+
+- Core domain: `business_law`
+- Satellite domains: `investment_law`, `tax_law`, `labor_law`, `social_insurance`, `administrative_penalty`
+- Do not run live crawling during evaluation
+- Do not bypass login, paywall, or captcha protections
+
 ## Coding conventions
 
 - Preserve the current Python stack and avoid framework migrations.
