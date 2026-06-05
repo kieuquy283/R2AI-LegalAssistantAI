@@ -122,8 +122,10 @@ python scripts/evaluate_submission.py \
 `src/ingestion/crawl_documents.py` reads `data/raw/document_urls.jsonl`, crawls public detail pages, stores raw HTML and Markdown, and writes a manifest at `data/raw/documents_manifest.jsonl`.
 
 - Task Crawl Detail Pages: `DONE`
+- Save raw HTML: `DONE`
 - Unit tests: `PASSED`
 - Test crawl: `PASSED`
+- Validation: `PASSED`
 - Output manifest: `data/raw/documents_manifest.jsonl`
 
 ## Coding conventions

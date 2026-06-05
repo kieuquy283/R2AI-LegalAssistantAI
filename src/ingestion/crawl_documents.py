@@ -382,6 +382,8 @@ async def crawl_detail_page(
     metadata = extract_document_metadata(html, url)
     doc_id = stable_doc_id(record, html=html)
 
+    html_dir = ensure_dir(html_dir)
+    markdown_dir = ensure_dir(markdown_dir)
     html_path = html_dir / f"{doc_id}.html"
     markdown_path = markdown_dir / f"{doc_id}.md"
 
