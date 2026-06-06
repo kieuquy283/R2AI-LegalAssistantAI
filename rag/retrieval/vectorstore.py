@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+import hashlib
+import os
+import warnings
 from pathlib import Path
 from typing import List
 
+import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import SentenceTransformer
 
 from rag.config.retrieval import DEFAULT_INDEX_DIR, EMBEDDING_BACKEND, LOCAL_EMBEDDING_MODEL
+
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+_EMBEDDINGS_CACHE: Embeddings | None = None
 
 
 class LocalSentenceTransformerEmbeddings(Embeddings):
@@ -35,11 +44,52 @@ class LocalSentenceTransformerEmbeddings(Embeddings):
         return embedding[0].tolist()
 
 
-def get_embeddings() -> Embeddings:
-    if EMBEDDING_BACKEND == "local":
-        return LocalSentenceTransformerEmbeddings(LOCAL_EMBEDDING_MODEL)
+class OfflineHashEmbeddings(Embeddings):
+    def __init__(self, dimension: int = 384):
+        self.dimension = dimension
 
-    raise ValueError("Chỉ hỗ trợ EMBEDDING_BACKEND=local")
+    def _embed_one(self, text: str, prefix: str) -> List[float]:
+        vector = np.zeros(self.dimension, dtype=np.float32)
+        payload = f"{prefix}:{text}".encode("utf-8")
+        tokens = (text or "").split() or [text or "_empty_"]
+        for token in tokens:
+            digest = hashlib.sha256(payload + token.encode("utf-8")).digest()
+            index = int.from_bytes(digest[:4], "little") % self.dimension
+            sign = 1.0 if digest[4] % 2 == 0 else -1.0
+            weight = 1.0 + (digest[5] / 255.0)
+            vector[index] += sign * weight
+
+        norm = float(np.linalg.norm(vector))
+        if norm == 0.0:
+            vector[0] = 1.0
+            norm = 1.0
+        vector /= norm
+        return vector.tolist()
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self._embed_one(text, "passage") for text in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._embed_one(text, "query")
+
+
+def get_embeddings() -> Embeddings:
+    global _EMBEDDINGS_CACHE
+    if _EMBEDDINGS_CACHE is not None:
+        return _EMBEDDINGS_CACHE
+
+    if EMBEDDING_BACKEND == "local":
+        try:
+            _EMBEDDINGS_CACHE = LocalSentenceTransformerEmbeddings(LOCAL_EMBEDDING_MODEL)
+        except Exception as exc:
+            warnings.warn(
+                f"Falling back to offline hash embeddings because '{LOCAL_EMBEDDING_MODEL}' could not be loaded: {exc}",
+                RuntimeWarning,
+            )
+            _EMBEDDINGS_CACHE = OfflineHashEmbeddings()
+        return _EMBEDDINGS_CACHE
+
+    raise ValueError("Chi ho tro EMBEDDING_BACKEND=local")
 
 
 def ensure_index_dir(index_dir: str | Path = DEFAULT_INDEX_DIR) -> None:
@@ -51,7 +101,7 @@ def build_and_save_vectorstore(
     index_dir: str | Path = DEFAULT_INDEX_DIR,
 ) -> FAISS:
     if not documents:
-        raise ValueError("Không có documents để build vectorstore.")
+        raise ValueError("Khong co documents de build vectorstore.")
 
     ensure_index_dir(index_dir)
     embeddings = get_embeddings()
@@ -65,7 +115,7 @@ def build_and_save_vectorstore(
 def load_vectorstore(index_dir: str | Path = DEFAULT_INDEX_DIR) -> FAISS:
     index_dir = Path(index_dir)
     if not index_dir.exists():
-        raise FileNotFoundError(f"Không tìm thấy thư mục index: {index_dir}")
+        raise FileNotFoundError(f"Khong tim thay thu muc index: {index_dir}")
 
     embeddings = get_embeddings()
     return FAISS.load_local(

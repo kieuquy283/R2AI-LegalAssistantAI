@@ -1,0 +1,7 @@
+{
+  "chunks": 3117,
+  "context_chunks": 446,
+  "chunks_path": "data/processed/chunks.jsonl",
+  "context_chunks_path": "data/processed/context_chunks.jsonl",
+  "edges_path": "data/processed/legal_edges.jsonl"
+}
