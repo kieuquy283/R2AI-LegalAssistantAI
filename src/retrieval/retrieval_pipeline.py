@@ -4,6 +4,7 @@ import argparse
 import json
 from typing import Dict
 
+from src.retrieval.confidence_checker import ConfidenceChecker
 from src.retrieval.context_expander import ContextExpander
 from src.retrieval.hybrid_retriever import HybridRetriever
 from src.retrieval.query_router import route_query
@@ -15,10 +16,38 @@ class RetrievalPipeline:
         self.retriever = HybridRetriever()
         self.expander = ContextExpander(retriever=self.retriever)
         self.reranker = Reranker()
+        self.confidence_checker = ConfidenceChecker()
+
+    def _route_result_for(self, route: str, domains: list[str], reason: str) -> Dict[str, object]:
+        needs_parent = route in {"PARENT_CONTEXT", "LEGAL_GRAPH_CONTEXT", "CROSS_DOMAIN_CONTEXT", "MULTI_DOMAIN_COMPLEX"}
+        needs_neighbor = route == "MULTI_DOMAIN_COMPLEX"
+        needs_graph = route in {"LEGAL_GRAPH_CONTEXT", "CROSS_DOMAIN_CONTEXT", "MULTI_DOMAIN_COMPLEX"}
+        needs_cross_domain = route in {"CROSS_DOMAIN_CONTEXT", "MULTI_DOMAIN_COMPLEX"}
+        return {
+            "route": route,
+            "domains": domains,
+            "needs_parent": needs_parent,
+            "needs_neighbor": needs_neighbor,
+            "needs_graph": needs_graph,
+            "needs_cross_domain": needs_cross_domain,
+            "reason": reason,
+        }
 
     def run(self, query: str) -> Dict[str, object]:
         seed_chunks = self.retriever.search(query, top_k=5)
-        route = route_query(query, seed_chunks=seed_chunks)
+        initial_route = route_query(query, seed_chunks=seed_chunks)
+        confidence_result = self.confidence_checker.check(
+            query=query,
+            route_result=initial_route,
+            seed_chunks=seed_chunks,
+        )
+        route = initial_route
+        if confidence_result["should_escalate"]:
+            route = self._route_result_for(
+                str(confidence_result["recommended_route"]),
+                list(initial_route.get("domains") or []),
+                "Escalated after low-confidence initial retrieval.",
+            )
         expanded_contexts = self.expander.expand(query=query, route_result=route, seed_chunks=seed_chunks)
         max_contexts = {
             "SIMPLE_VECTOR": 5,
@@ -32,7 +61,9 @@ class RetrievalPipeline:
             "query": query,
             "route": route["route"],
             "domains": route["domains"],
+            "initial_route_result": initial_route,
             "route_result": route,
+            "confidence_result": confidence_result,
             "seed_chunks": seed_chunks,
             "expanded_contexts": expanded_contexts,
             "final_contexts": final_contexts,

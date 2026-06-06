@@ -17,6 +17,7 @@ class LegalQAPipelineTests(unittest.TestCase):
         self.assertTrue(result["answer"])
         self.assertTrue(result["final_contexts"])
         self.assertIn("citations", result)
+        self.assertIn("grounding", result)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from typing import Dict, List, Sequence
 from rag.modules.retrieval.utils import tokenize_for_bm25
 from src.ingestion.common import read_jsonl
 from src.retrieval.hybrid_retriever import HybridRetriever
+from src.retrieval.legal_graph_store import LegalGraphStore
 from src.retrieval.query_router import route_query
 
 
@@ -19,12 +20,20 @@ class ContextExpander:
         context_chunks_path: str | Path = "data/processed/context_chunks.jsonl",
         edges_path: str | Path = "data/processed/legal_edges.jsonl",
         cross_domain_edges_path: str | Path = "data/processed/cross_domain_edges.jsonl",
+        legal_graph_nodes_path: str | Path = "data/processed/legal_graph_nodes.jsonl",
+        legal_graph_edges_path: str | Path = "data/processed/legal_graph_edges.jsonl",
         retriever: HybridRetriever | None = None,
     ) -> None:
         self.chunks = read_jsonl(chunks_path)
         self.context_chunks = read_jsonl(context_chunks_path)
         self.edges = read_jsonl(edges_path)
         self.cross_domain_edges = read_jsonl(cross_domain_edges_path) if Path(cross_domain_edges_path).exists() else []
+        self.graph_store = None
+        if Path(legal_graph_nodes_path).exists() and Path(legal_graph_edges_path).exists():
+            self.graph_store = LegalGraphStore(
+                nodes_path=legal_graph_nodes_path,
+                edges_path=legal_graph_edges_path,
+            )
         self.retriever = retriever or HybridRetriever()
 
         self.chunk_by_id = {str(row["chunk_id"]): row for row in self.chunks}
@@ -128,8 +137,19 @@ class ContextExpander:
                 chunk = self.chunk_by_id.get(str(seed["chunk_id"]))
                 if not chunk:
                     continue
-                for ref in list(chunk.get("explicit_refs") or [])[:3]:
-                    target_chunk_id = ref.get("target_chunk_id")
+                graph_refs = self.graph_store.get_explicit_refs(str(seed["chunk_id"])) if self.graph_store else []
+                if graph_refs:
+                    refs = [
+                        {
+                            "target_chunk_id": edge.get("target_id"),
+                            "relation_type": edge.get("relation_type"),
+                        }
+                        for edge in graph_refs
+                    ]
+                else:
+                    refs = list(chunk.get("explicit_refs") or [])[:3]
+                for ref in refs[:3]:
+                    target_chunk_id = ref.get("target_chunk_id") or ref.get("target_id")
                     target_chunk = self.chunk_by_id.get(str(target_chunk_id)) if target_chunk_id else None
                     if not target_chunk:
                         continue
@@ -139,7 +159,7 @@ class ContextExpander:
                             str(target_chunk.get("content") or ""),
                             self._chunk_metadata(target_chunk),
                             context_type="explicit_reference",
-                            relation_type="REFERS_TO",
+                            relation_type=str(ref.get("relation_type") or "REFERS_TO"),
                             retrieval_score=float(seed.get("score") or 0.0),
                         )
                     )
@@ -147,15 +167,31 @@ class ContextExpander:
         if route_result.get("needs_cross_domain"):
             satellite_domains = [domain for domain in route_result.get("domains", []) if domain != "business_law"]
             candidates: List[Dict[str, object]] = []
+            seed_graph_domains = set()
+            if self.graph_store:
+                for seed in seed_chunks:
+                    seed_graph_domains.update(
+                        str(edge.get("target_domain"))
+                        for edge in self.graph_store.get_cross_domains(str(seed["chunk_id"]))
+                        if edge.get("target_domain")
+                    )
+            satellite_domains = list(dict.fromkeys(satellite_domains + sorted(seed_graph_domains)))
             for chunk in self.chunks:
                 mapped_domains = set(self.cross_domain_map.get(str(chunk["chunk_id"]), []))
-                if not mapped_domains.intersection(satellite_domains):
+                chunk_domain = str(chunk.get("domain") or "")
+                if not mapped_domains.intersection(satellite_domains) and chunk_domain not in satellite_domains:
                     continue
                 candidates.append(chunk)
             candidates.sort(key=lambda chunk: self._lexical_score(query, str(chunk.get("embedding_text") or chunk.get("content") or "")), reverse=True)
             per_domain_counts: Dict[str, int] = {}
             for chunk in candidates:
-                mapped_domains = [domain for domain in self.cross_domain_map.get(str(chunk["chunk_id"]), []) if domain in satellite_domains]
+                mapped_domains = [
+                    domain
+                    for domain in self.cross_domain_map.get(str(chunk["chunk_id"]), [])
+                    if domain in satellite_domains
+                ]
+                if not mapped_domains and str(chunk.get("domain") or "") in satellite_domains:
+                    mapped_domains = [str(chunk.get("domain") or "")]
                 if not mapped_domains:
                     continue
                 selected_domain = mapped_domains[0]

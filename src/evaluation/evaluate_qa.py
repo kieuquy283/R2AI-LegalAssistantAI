@@ -67,6 +67,7 @@ def evaluate_questions(questions: List[Dict[str, object]], *, run_id: str) -> Di
                 "final_context_ids": [item.get("chunk_id") for item in result.get("final_contexts", [])],
                 "citations": result.get("citations"),
                 "answer": result.get("answer"),
+                "grounding": result.get("grounding"),
                 "latency_seconds": latency,
             }
         )

@@ -8,6 +8,7 @@ from typing import Any, Dict, Iterable, Optional
 from bs4 import BeautifulSoup
 
 from src.ingestion.common import normalize_text, read_jsonl, write_jsonl
+from src.ingestion.provider_parsers import parse_luatvietnam_metadata
 
 
 DEFAULT_MANIFEST_PATH = Path("data/raw/documents_manifest.jsonl")
@@ -58,22 +59,31 @@ def build_document_record(record: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("Only successful manifest records can be parsed")
 
     html_fallback = _parse_html_fallback(record.get("raw_html_path", ""))
+    provider_metadata: Dict[str, Any] = {}
+    raw_html_path = record.get("raw_html_path")
+    source_url = str(record.get("source_url") or record.get("url") or "")
+    provider = str(record.get("provider") or "")
+    if raw_html_path and (provider == "LuatVietnam" or "luatvietnam.vn" in source_url):
+        html_text = Path(raw_html_path).read_text(encoding="utf-8", errors="ignore")
+        provider_metadata = parse_luatvietnam_metadata(html_text, url=source_url)
+
     output = {
         "doc_id": record.get("doc_id"),
-        "doc_title": _clean_metadata_value(record.get("doc_title")) or html_fallback.get("doc_title"),
-        "doc_number": _clean_metadata_value(record.get("doc_number")),
-        "doc_type": _clean_metadata_value(record.get("doc_type")),
-        "issuing_body": _clean_metadata_value(record.get("issuing_body")),
-        "signer": _clean_metadata_value(record.get("signer")),
-        "issue_date": _extract_date(_clean_metadata_value(record.get("issue_date"))) or html_fallback.get("issue_date"),
-        "effective_date": _extract_date(_clean_metadata_value(record.get("effective_date"))) or html_fallback.get("effective_date"),
-        "status": _clean_metadata_value(record.get("status")),
+        "doc_title": provider_metadata.get("doc_title") or _clean_metadata_value(record.get("doc_title")) or html_fallback.get("doc_title"),
+        "doc_number": provider_metadata.get("doc_number") or _clean_metadata_value(record.get("doc_number")),
+        "doc_type": provider_metadata.get("doc_type") or _clean_metadata_value(record.get("doc_type")),
+        "issuing_body": provider_metadata.get("issuing_body") or _clean_metadata_value(record.get("issuing_body")),
+        "signer": provider_metadata.get("signer") or _clean_metadata_value(record.get("signer")),
+        "issue_date": provider_metadata.get("issue_date") or _extract_date(_clean_metadata_value(record.get("issue_date"))) or html_fallback.get("issue_date"),
+        "effective_date": provider_metadata.get("effective_date") or _extract_date(_clean_metadata_value(record.get("effective_date"))) or html_fallback.get("effective_date"),
+        "status": provider_metadata.get("status") or _clean_metadata_value(record.get("status")),
         "domain": record.get("domain"),
         "source_url": record.get("source_url") or record.get("url"),
         "canonical_url": record.get("canonical_url"),
         "source_id": record.get("source_id"),
         "source_name": record.get("source_name"),
         "provider": record.get("provider"),
+        "confidence": provider_metadata.get("confidence") or {},
         "raw_html_path": record.get("raw_html_path"),
         "markdown_path": record.get("markdown_path"),
         "content_hash": record.get("content_hash"),
