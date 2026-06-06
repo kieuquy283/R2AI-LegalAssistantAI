@@ -1,0 +1,15 @@
+{
+  "task": "crawl_detail_pages",
+  "created_at": "2026-06-05T16:05:40.298358+00:00",
+  "input_path": "data/raw/document_urls.jsonl",
+  "manifest_path": "data\\raw\\documents_manifest.jsonl",
+  "html_dir": "data\\raw\\html",
+  "markdown_dir": "data\\raw\\markdown",
+  "total_input_records": 5,
+  "success_count": 5,
+  "failed_count": 0,
+  "restricted_signal_count": 5,
+  "domain_counts": {
+    "business_law": 5
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "business_law": {
+    "description": "Core domain for SME and enterprise legal consulting.",
+    "keywords": [
+      "doanh nghiệp",
+      "công ty",
+      "thành lập doanh nghiệp",
+      "vốn điều lệ",
+      "góp vốn",
+      "người đại diện theo pháp luật",
+      "đăng ký doanh nghiệp",
+      "cổ phần",
+      "thành viên góp vốn"
+    ],
+    "subdomains": [
+      "company_establishment",
+      "capital_contribution",
+      "company_governance",
+      "legal_representative",
+      "enterprise_registration"
+    ]
+  },
+  "investment_law": {
+    "description": "Foreign investment, conditional business lines, FDI contribution.",
+    "keywords": [
+      "đầu tư",
+      "nhà đầu tư nước ngoài",
+      "FDI",
+      "IRC",
+      "ngành nghề kinh doanh có điều kiện",
+      "góp vốn của nhà đầu tư nước ngoài"
+    ],
+    "subdomains": [
+      "foreign_investor",
+      "conditional_business_lines",
+      "capital_contribution_by_foreign_investor"
+    ]
+  },
+  "tax_law": {
+    "description": "Basic tax obligations for SMEs.",
+    "keywords": [
+      "thuế",
+      "hóa đơn",
+      "hóa đơn điện tử",
+      "lệ phí môn bài",
+      "GTGT",
+      "VAT",
+      "TNDN",
+      "TNCN",
+      "kê khai thuế"
+    ],
+    "subdomains": [
+      "tax_registration",
+      "e_invoice",
+      "license_fee",
+      "vat",
+      "cit",
+      "pit"
+    ]
+  },
+  "labor_law": {
+    "description": "Employment and internal labor compliance for SMEs.",
+    "keywords": [
+      "lao động",
+      "người lao động",
+      "hợp đồng lao động",
+      "lương",
+      "thử việc",
+      "sa thải",
+      "nghỉ việc"
+    ],
+    "subdomains": [
+      "employment_contract",
+      "salary",
+      "probation",
+      "termination"
+    ]
+  },
+  "social_insurance": {
+    "description": "Social insurance, health insurance, unemployment insurance obligations.",
+    "keywords": [
+      "BHXH",
+      "bảo hiểm xã hội",
+      "BHYT",
+      "BHTN",
+      "bảo hiểm y tế",
+      "bảo hiểm thất nghiệp"
+    ],
+    "subdomains": [
+      "social_insurance_obligation",
+      "health_insurance",
+      "unemployment_insurance"
+    ]
+  },
+  "administrative_penalty": {
+    "description": "Administrative penalties relevant to SME compliance.",
+    "keywords": [
+      "xử phạt",
+      "mức phạt",
+      "vi phạm hành chính",
+      "bị phạt",
+      "chậm nộp",
+      "không thông báo",
+      "không đăng ký"
+    ],
+    "subdomains": [
+      "business_registration_penalty",
+      "capital_contribution_penalty",
+      "tax_penalty",
+      "labor_penalty"
+    ]
+  },
+  "civil_commercial_law": {
+    "description": "Contracts, representation, civil and commercial transactions.",
+    "keywords": [
+      "hợp đồng",
+      "giao dịch",
+      "ủy quyền",
+      "đại diện",
+      "bồi thường",
+      "phạt vi phạm hợp đồng",
+      "thương mại"
+    ],
+    "subdomains": [
+      "contract",
+      "representation",
+      "commercial_transaction",
+      "liability"
+    ]
+  },
+  "accounting_law": {
+    "description": "Accounting and financial reporting obligations.",
+    "keywords": [
+      "kế toán",
+      "sổ sách kế toán",
+      "báo cáo tài chính",
+      "chứng từ kế toán"
+    ],
+    "subdomains": [
+      "accounting_books",
+      "financial_statement",
+      "accounting_documents"
+    ]
+  },
+  "ip_law": {
+    "description": "Intellectual property issues for SMEs.",
+    "keywords": [
+      "nhãn hiệu",
+      "sở hữu trí tuệ",
+      "thương hiệu",
+      "bản quyền",
+      "kiểu dáng công nghiệp"
+    ],
+    "subdomains": [
+      "trademark",
+      "copyright",
+      "industrial_design"
+    ]
+  }
+}

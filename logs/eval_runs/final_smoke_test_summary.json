@@ -1,0 +1,12 @@
+{
+  "total_questions": 3,
+  "citation_present_rate": 1.0,
+  "answer_non_empty_rate": 1.0,
+  "route_distribution": {
+    "PARENT_CONTEXT": 1,
+    "CROSS_DOMAIN_CONTEXT": 2
+  },
+  "avg_context_count": 9.0,
+  "avg_latency_seconds": 0.048639533342793584,
+  "legal_ref_hit_rate": 0.0
+}

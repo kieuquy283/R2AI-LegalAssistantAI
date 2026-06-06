@@ -1,0 +1,38 @@
+{
+  "manifest": {
+    "luat_doanh_nghiep_2020_so_59_2020_qh14_59_2020_qh14": {
+      "content_hash": "ccf6a345d0839d1728a985a83e92a87bd2e041b4d676e8e7af05781c19bf10a7",
+      "html_hash": "7c8a4564e65806011cb04b16b39faad67adac7ef6a00034408494ce4ab9ab023",
+      "success": true
+    },
+    "luat_doanh_nghiep_sua_doi_2025_so_76_2025_qh15_76_2025_qh15": {
+      "content_hash": "4a2d575d902a7769fcbd77f753792f1cf66118ad5a02ccdf30734a619216f306",
+      "html_hash": "0b807b917efdb42170e53c1b8418dd37be766b6d41b1a9e2969f46a2c5f7a43d",
+      "success": true
+    },
+    "luat_sua_doi_luat_dau_tu_cong_luat_dau_tu_theo_phuong_thuc_doi_tac_cong_tu_luat_dau_tu_luat_nha_o_luat_dau_thau_luat_dien_luc_luat_doanh_nghiep_luat_thue_tieu_t": {
+      "content_hash": "96f0416f8832649e0ed6131252eb6865cd6223da57fdd5c6190c8bbcb24bdefd",
+      "html_hash": "82fca9b71d9cd33804745840bca6f6ccb61ad9146600f5c306d3a5ae0311d177",
+      "success": true
+    },
+    "luat_doanh_nghiep_2014_so_68_2014_qh13_68_2014_qh13": {
+      "content_hash": "038b67289f37900cb32c5cd6df29057c1e6a3476b2054c7b4a4cdcde23ac145e",
+      "html_hash": "b5eea22c993a0c5668cc6453f6cbecccdfb88911005a410f84b4dc6dde939c94",
+      "success": true
+    },
+    "luat_sua_doi_bo_sung_dieu_170_luat_doanh_nghiep_so_37_2013_qh13_37_2013_qh13": {
+      "content_hash": "77e9cdce9cd978813928368c16a971f2d505f1521dc4f9b4ef1feeeeb9048f6f",
+      "html_hash": "c18111f13403f09097ba80b7865025a6023305556d8881ab1dd5776417851dd7",
+      "success": true
+    }
+  },
+  "last_status": "updated",
+  "changed_doc_ids": [
+    "luat_doanh_nghiep_2014_so_68_2014_qh13_68_2014_qh13",
+    "luat_doanh_nghiep_2020_so_59_2020_qh14_59_2020_qh14",
+    "luat_doanh_nghiep_sua_doi_2025_so_76_2025_qh15_76_2025_qh15",
+    "luat_sua_doi_bo_sung_dieu_170_luat_doanh_nghiep_so_37_2013_qh13_37_2013_qh13",
+    "luat_sua_doi_luat_dau_tu_cong_luat_dau_tu_theo_phuong_thuc_doi_tac_cong_tu_luat_dau_tu_luat_nha_o_luat_dau_thau_luat_dien_luc_luat_doanh_nghiep_luat_thue_tieu_t"
+  ],
+  "removed_doc_ids": []
+}

@@ -98,6 +98,36 @@ python scripts/evaluate_submission.py \
 3. Update `CHANGELOG.md` after each task-sized change.
 4. Prefer package imports such as `from legal_rag.retrieval.hybrid import HybridRetriever`.
 
+## Source Registry
+
+`src/ingestion/source_registry.py` manages offline crawl sources declared in `data/sources/sources.yaml`.
+
+- Core domain: `business_law`
+- Satellite domains: `investment_law`, `tax_law`, `labor_law`, `social_insurance`, `administrative_penalty`
+- Do not run live crawling during evaluation
+- Do not bypass login, paywall, or captcha protections
+
+## Collect Document URLs
+
+`src/ingestion/collect_urls.py` reads `data/sources/sources.yaml`, crawls configured public search pages, extracts detail-document links, deduplicates them, and writes `data/raw/document_urls.jsonl` plus `data/raw/document_urls_report.json`.
+
+- Task Collect Document URLs: `DONE`
+- Source Registry validation: `PASSED`
+- Unit tests: `PASSED`
+- Test crawl: `PASSED`
+- Output: `data/raw/document_urls.jsonl`
+
+## Crawl Detail Pages
+
+`src/ingestion/crawl_documents.py` reads `data/raw/document_urls.jsonl`, crawls public detail pages, stores raw HTML and Markdown, and writes a manifest at `data/raw/documents_manifest.jsonl`.
+
+- Task Crawl Detail Pages: `DONE`
+- Save raw HTML: `DONE`
+- Unit tests: `PASSED`
+- Test crawl: `PASSED`
+- Validation: `PASSED`
+- Output manifest: `data/raw/documents_manifest.jsonl`
+
 ## Coding conventions
 
 - Preserve the current Python stack and avoid framework migrations.

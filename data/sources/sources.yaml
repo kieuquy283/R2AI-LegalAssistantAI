@@ -1,0 +1,376 @@
+# R2AI Legal AI Assistant
+# Source Registry for Data Ingestion
+#
+# Purpose:
+# - Manage all legal document sources in one place.
+# - Support offline crawling, domain-aware routing, and reproducible indexing.
+# - Each source must have a stable id, domain, URL, crawl strategy, and legal scope.
+#
+# Notes:
+# - Do not crawl live during evaluation.
+# - Use these sources only for offline ingestion.
+# - Respect robots.txt, rate limits, login/paywall restrictions, and source terms.
+
+version: "1.0"
+
+default_policy:
+  crawl_mode: "offline"
+  respect_robots_txt: true
+  allow_login_required: false
+  allow_paywall_bypass: false
+  allow_captcha_bypass: false
+  default_rate_limit_seconds: 2
+  default_retry: 2
+  default_timeout_seconds: 60
+
+allowed_domains:
+  - business_law
+  - investment_law
+  - tax_law
+  - labor_law
+  - social_insurance
+  - administrative_penalty
+  - civil_commercial_law
+  - accounting_law
+  - ip_law
+
+sources:
+  # =========================
+  # CORE DOMAIN: BUSINESS LAW
+  # =========================
+
+  - id: "luatvietnam_business_law_search_luat_doanh_nghiep"
+    name: "LuatVietnam - Tìm kiếm Luật Doanh nghiệp"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "business_law"
+    subdomains:
+      - "company_establishment"
+      - "capital_contribution"
+      - "company_governance"
+      - "legal_representative"
+      - "enterprise_registration"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=lu%E1%BA%ADt+doanh+nghi%E1%BB%87p&SearchOptions=1&SearchByDate=issueDate&DateFromString=&DateToString=&search=&DocTypeIds=0&search=&OrganIds=0&search=&FieldIds=0&LanguageId=0&SignerIds=0&SignerIds=0"
+    enabled: true
+    priority: "high"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "Luật Doanh nghiệp"
+        - "doanh nghiệp"
+        - "công ty"
+        - "vốn điều lệ"
+        - "người đại diện theo pháp luật"
+        - "đăng ký doanh nghiệp"
+      exclude_keywords:
+        - "tin tức"
+        - "bình luận"
+        - "dịch vụ tư vấn"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_business_law_search_dang_ky_doanh_nghiep"
+    name: "LuatVietnam - Tìm kiếm đăng ký doanh nghiệp"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "business_law"
+    subdomains:
+      - "enterprise_registration"
+      - "business_registration_procedure"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=%C4%91%C4%83ng+k%C3%BD+doanh+nghi%E1%BB%87p&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "high"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "đăng ký doanh nghiệp"
+        - "hồ sơ đăng ký doanh nghiệp"
+        - "thành lập doanh nghiệp"
+        - "thay đổi nội dung đăng ký doanh nghiệp"
+      exclude_keywords:
+        - "tin tức"
+        - "bình luận"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  # =================================
+  # SATELLITE DOMAIN: INVESTMENT LAW
+  # =================================
+
+  - id: "luatvietnam_investment_law_search"
+    name: "LuatVietnam - Tìm kiếm Luật Đầu tư / FDI"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "investment_law"
+    subdomains:
+      - "foreign_investor"
+      - "conditional_business_lines"
+      - "capital_contribution_by_foreign_investor"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=lu%E1%BA%ADt+%C4%91%E1%BA%A7u+t%C6%B0+nh%C3%A0+%C4%91%E1%BA%A7u+t%C6%B0+n%C6%B0%E1%BB%9Bc+ngo%C3%A0i&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 10
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "Luật Đầu tư"
+        - "nhà đầu tư nước ngoài"
+        - "góp vốn"
+        - "mua cổ phần"
+        - "ngành nghề kinh doanh có điều kiện"
+      exclude_keywords:
+        - "tin tức"
+        - "bình luận"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  # ============================
+  # SATELLITE DOMAIN: TAX LAW
+  # ============================
+
+  - id: "luatvietnam_tax_law_search_sme"
+    name: "LuatVietnam - Tìm kiếm nghĩa vụ thuế cơ bản cho SME"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "tax_law"
+    subdomains:
+      - "tax_registration"
+      - "e_invoice"
+      - "license_fee"
+      - "vat"
+      - "cit"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=thu%E1%BA%BF+h%C3%B3a+%C4%91%C6%A1n+l%E1%BB%87+ph%C3%AD+m%C3%B4n+b%C3%A0i+doanh+nghi%E1%BB%87p&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 10
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "thuế"
+        - "hóa đơn điện tử"
+        - "lệ phí môn bài"
+        - "doanh nghiệp"
+        - "kê khai thuế"
+      exclude_keywords:
+        - "tin tức"
+        - "bình luận"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  # ====================================
+  # SATELLITE DOMAIN: LABOR / INSURANCE
+  # ====================================
+
+  - id: "luatvietnam_labor_social_insurance_search_sme"
+    name: "LuatVietnam - Tìm kiếm lao động và BHXH cho SME"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "labor_law"
+    related_domains:
+      - "social_insurance"
+    subdomains:
+      - "employment_contract"
+      - "salary"
+      - "probation"
+      - "social_insurance_obligation"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=h%E1%BB%A3p+%C4%91%E1%BB%93ng+lao+%C4%91%E1%BB%99ng+b%E1%BA%A3o+hi%E1%BB%83m+x%C3%A3+h%E1%BB%99i+doanh+nghi%E1%BB%87p&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 10
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "hợp đồng lao động"
+        - "người lao động"
+        - "bảo hiểm xã hội"
+        - "BHXH"
+        - "tiền lương"
+      exclude_keywords:
+        - "tin tức"
+        - "bình luận"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  # ==========================================
+  # SATELLITE DOMAIN: ADMINISTRATIVE PENALTIES
+  # ==========================================
+
+  - id: "luatvietnam_penalty_business_search"
+    name: "LuatVietnam - Tìm kiếm xử phạt vi phạm doanh nghiệp"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "administrative_penalty"
+    subdomains:
+      - "business_registration_penalty"
+      - "capital_contribution_penalty"
+      - "tax_penalty"
+      - "labor_penalty"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=x%E1%BB%AD+ph%E1%BA%A1t+vi+ph%E1%BA%A1m+h%C3%A0nh+ch%C3%ADnh+doanh+nghi%E1%BB%87p+v%E1%BB%91n+%C4%91i%E1%BB%81u+l%E1%BB%87&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "high"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 10
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "xử phạt"
+        - "vi phạm hành chính"
+        - "doanh nghiệp"
+        - "vốn điều lệ"
+        - "đăng ký doanh nghiệp"
+      exclude_keywords:
+        - "tin tức"
+        - "bình luận"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
