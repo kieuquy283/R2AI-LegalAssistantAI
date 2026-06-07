@@ -27,11 +27,24 @@ Thumbs.db
 logs/
 *.log
 data/logs/
+data/raw/debug/
+data/raw/html/
+data/raw/markdown/
+data/raw/crawl_quality_report.json
+data/raw/crawl_documents_report.json
+data/raw/document_urls_after_fix.jsonl
+data/raw/document_urls_expansion_*.jsonl
+data/raw/document_urls_report_after_fix.json
+data/raw/document_urls_report_expansion_*.json
+data/raw/documents_manifest.jsonl.tmp
+data/processed/
 data/.crawl4ai/
 data/playwright-browsers/
 .tmp_collect_urls/
 .tmp_source_registry/
 .tmp_crawl_documents/
+scripts/*debug*.py
+R2AIStage1DATA.json
 
 # Index artifacts
 faiss_index/

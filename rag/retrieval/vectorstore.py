@@ -22,7 +22,10 @@ _EMBEDDINGS_CACHE: Embeddings | None = None
 
 class LocalSentenceTransformerEmbeddings(Embeddings):
     def __init__(self, model_name: str):
-        self.model = SentenceTransformer(model_name)
+        self.model = SentenceTransformer(model_name, local_files_only=True)
+        max_seq_length = int(os.getenv("EMBEDDING_MAX_LENGTH", "1024"))
+        if max_seq_length > 0:
+            self.model.max_seq_length = max_seq_length
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         texts = [f"passage: {t}" for t in texts]
@@ -45,7 +48,7 @@ class LocalSentenceTransformerEmbeddings(Embeddings):
 
 
 class OfflineHashEmbeddings(Embeddings):
-    def __init__(self, dimension: int = 384):
+    def __init__(self, dimension: int = 1024):
         self.dimension = dimension
 
     def _embed_one(self, text: str, prefix: str) -> List[float]:

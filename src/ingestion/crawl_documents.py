@@ -37,7 +37,7 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 
@@ -83,6 +83,11 @@ def ensure_dir(path: str | Path) -> Path:
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def normalize_url(url: str) -> str:
+    parsed = urlparse((url or "").strip())
+    return urlunparse(parsed._replace(fragment=""))
 
 
 def remove_vietnamese_accents(text: str) -> str:
@@ -137,6 +142,46 @@ def read_jsonl(path: str | Path, limit: Optional[int] = None) -> List[Dict[str, 
                 break
 
     return records
+
+
+def normalize_crawl_url_key(record: Dict[str, Any]) -> str:
+    for field in ("canonical_url", "source_url", "url"):
+        value = record.get(field)
+        if value:
+            return normalize_url(str(value))
+    return ""
+
+
+def load_successful_crawl_keys(manifest_path: str | Path) -> set[str]:
+    path = Path(manifest_path)
+    if not path.exists():
+        return set()
+
+    successful_keys: set[str] = set()
+    for row in read_jsonl(path):
+        if not row.get("success"):
+            continue
+        key = normalize_crawl_url_key(row)
+        if key:
+            successful_keys.add(key)
+    return successful_keys
+
+
+def filter_resume_records(
+    records: Iterable[Dict[str, Any]],
+    successful_keys: set[str],
+) -> tuple[List[Dict[str, Any]], int]:
+    filtered_records: List[Dict[str, Any]] = []
+    skipped_count = 0
+
+    for record in records:
+        key = normalize_crawl_url_key(record)
+        if key and key in successful_keys:
+            skipped_count += 1
+            continue
+        filtered_records.append(record)
+
+    return filtered_records, skipped_count
 
 
 def write_jsonl(path: str | Path, records: Iterable[Dict[str, Any]], mode: str = "w") -> int:
@@ -433,6 +478,7 @@ async def run_crawl_documents(
     rate_limit_seconds: float = 2.0,
     timeout_seconds: int = 60,
     append_manifest: bool = False,
+    resume: bool = False,
 ) -> Dict[str, Any]:
     if AsyncWebCrawler is None or BrowserConfig is None:
         raise RuntimeError(
@@ -448,6 +494,17 @@ async def run_crawl_documents(
     input_records = read_jsonl(input_path, limit=limit)
     input_records = deduplicate_input_records(input_records)
 
+    resume_success_keys: set[str] = set()
+    if resume:
+        resume_success_keys = load_successful_crawl_keys(manifest_path)
+
+    skipped_count = 0
+    if resume_success_keys:
+        input_records, skipped_count = filter_resume_records(
+            input_records,
+            resume_success_keys,
+        )
+
     browser_config = BrowserConfig(
         headless=True,
         text_mode=True,
@@ -459,7 +516,7 @@ async def run_crawl_documents(
         ),
     )
 
-    manifest_mode = "a" if append_manifest else "w"
+    manifest_mode = "a" if append_manifest or resume else "w"
     success_count = 0
     failed_count = 0
     restricted_count = 0
@@ -515,6 +572,7 @@ async def run_crawl_documents(
         "success_count": success_count,
         "failed_count": failed_count,
         "restricted_signal_count": restricted_count,
+        "skipped_count": skipped_count,
         "domain_counts": domain_counts,
     }
 
@@ -534,6 +592,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rate-limit-seconds", type=float, default=2.0)
     parser.add_argument("--timeout-seconds", type=int, default=60)
     parser.add_argument("--append-manifest", action="store_true")
+    parser.add_argument("--resume", action="store_true")
     return parser.parse_args()
 
 
@@ -555,6 +614,7 @@ def main() -> None:
             rate_limit_seconds=args.rate_limit_seconds,
             timeout_seconds=args.timeout_seconds,
             append_manifest=args.append_manifest,
+            resume=args.resume,
         )
     )
 

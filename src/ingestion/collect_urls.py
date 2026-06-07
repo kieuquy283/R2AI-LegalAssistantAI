@@ -106,13 +106,37 @@ def canonicalize_detail_url(url: str) -> str:
     return urlunparse(parsed)
 
 
+def is_luatvietnam_search_page(url: str) -> bool:
+    parsed = urlparse(normalize_url(url))
+    return (
+        parsed.netloc == "luatvietnam.vn"
+        and parsed.path == "/van-ban/tim-van-ban.html"
+    )
+
+
+def build_luatvietnam_search_page_urls(base_url: str, max_pages: int) -> List[str]:
+    parsed = urlparse(normalize_url(base_url))
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    urls = [normalize_url(base_url)]
+    for page in range(2, max_pages + 1):
+        page_query = dict(query)
+        page_query["PagSize"] = page_query.get("PagSize", "20")
+        page_query["PageSize"] = page_query.get("PageSize", "20")
+        page_query["PageIndex"] = str(page)
+        urls.append(urlunparse(parsed._replace(query=urlencode(page_query, doseq=True))))
+    return urls
+
+
 def is_same_host_or_relative(base_url: str, candidate_url: str) -> bool:
     base_host = urlparse(base_url).netloc
     candidate_host = urlparse(candidate_url).netloc
     return not candidate_host or candidate_host == base_host
 
 
-def build_paginated_urls(source: SourceConfig) -> List[str]:
+def build_paginated_urls(
+    source: SourceConfig,
+    max_pages_override: Optional[int] = None,
+) -> List[str]:
     """
     Create candidate search page URLs.
 
@@ -130,7 +154,10 @@ def build_paginated_urls(source: SourceConfig) -> List[str]:
         return [source.url]
 
     strategy = pagination.get("strategy", "detect_or_manual")
-    max_pages = int(pagination.get("max_pages", 1))
+    max_pages = int(max_pages_override or pagination.get("max_pages", 1))
+
+    if strategy == "detect_or_manual" and source.provider == "LuatVietnam" and is_luatvietnam_search_page(source.url):
+        return build_luatvietnam_search_page_urls(source.url, max_pages)
 
     if strategy != "manual_url_param":
         return [source.url]
@@ -241,6 +268,8 @@ def extract_next_page_links(html: str, source: SourceConfig, page_url: str) -> L
         absolute_url = normalize_url(urljoin(page_url, href))
         if urlparse(absolute_url).netloc != source_host:
             continue
+        if source.provider == "LuatVietnam" and not is_luatvietnam_search_page(absolute_url):
+            continue
 
         page_urls.append(absolute_url)
 
@@ -300,9 +329,18 @@ async def collect_for_source(
             "errors": 0,
         }
 
-    candidate_pages = build_paginated_urls(source)
+    candidate_pages = build_paginated_urls(
+        source,
+        max_pages_override=max_pages_override,
+    )
     pagination = source.raw.get("crawl_strategy", {}).get("pagination", {})
     max_pages = int(max_pages_override or pagination.get("max_pages", len(candidate_pages) or 1))
+    manual_pagination_only = (
+        source.provider == "LuatVietnam"
+        and is_luatvietnam_search_page(source.url)
+        and pagination.get("strategy", "detect_or_manual") == "detect_or_manual"
+        and len(candidate_pages) > 1
+    )
 
     queue: List[str] = candidate_pages[:max_pages]
     visited_pages: Set[str] = set()
@@ -352,7 +390,7 @@ async def collect_for_source(
 
             # Conservative next page discovery only for detect_or_manual.
             strategy = pagination.get("strategy", "detect_or_manual")
-            if strategy == "detect_or_manual":
+            if strategy == "detect_or_manual" and not manual_pagination_only:
                 for next_url in extract_next_page_links(html, source, final_url):
                     if next_url not in visited_pages and next_url not in queue:
                         if len(visited_pages) + len(queue) < max_pages:

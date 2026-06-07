@@ -16,7 +16,7 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 EMBEDDING_BACKEND = os.getenv("EMBEDDING_BACKEND", "local").strip().lower()
 LOCAL_EMBEDDING_MODEL = os.getenv(
     "LOCAL_EMBEDDING_MODEL",
-    "intfloat/multilingual-e5-base",
+    "BAAI/bge-m3",
 ).strip()
 
 DEFAULT_INDEX_DIR = resolve_project_path(os.getenv("INDEX_DIR", "data/indexes/default"))

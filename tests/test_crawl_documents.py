@@ -15,6 +15,9 @@ from src.ingestion.crawl_documents import (
     crawl_detail_page,
     detect_access_restriction,
     extract_document_metadata,
+    filter_resume_records,
+    load_successful_crawl_keys,
+    normalize_crawl_url_key,
     slugify,
 )
 
@@ -46,6 +49,56 @@ class TestCrawlDocumentsUtils(unittest.TestCase):
         cleaned = clean_markdown_noise(md)
         self.assertIn("Main content", cleaned)
         self.assertIn("Article 1. Test", cleaned)
+
+    def test_normalize_crawl_url_key_prefers_canonical_url(self):
+        record = {
+            "canonical_url": "https://example.com/doc-d1.html?utm_source=x#frag",
+            "source_url": "https://example.com/ignored",
+            "url": "https://example.com/ignored-too",
+        }
+        self.assertEqual(
+            normalize_crawl_url_key(record),
+            "https://example.com/doc-d1.html?utm_source=x",
+        )
+
+    def test_load_successful_crawl_keys_uses_success_rows_only(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "manifest.jsonl"
+            path.write_text(
+                "\n".join(
+                    [
+                        '{"success": true, "canonical_url": "https://example.com/a-d1.html"}',
+                        '{"success": false, "canonical_url": "https://example.com/b-d1.html"}',
+                        '{"success": true, "source_url": "https://example.com/c-d1.html"}',
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            keys = load_successful_crawl_keys(path)
+            self.assertEqual(
+                keys,
+                {
+                    "https://example.com/a-d1.html",
+                    "https://example.com/c-d1.html",
+                },
+            )
+
+    def test_filter_resume_records_skips_success_but_keeps_failed(self):
+        records = [
+            {"canonical_url": "https://example.com/a-d1.html"},
+            {"source_url": "https://example.com/b-d1.html"},
+            {"url": "https://example.com/c-d1.html"},
+        ]
+        filtered, skipped = filter_resume_records(
+            records,
+            {"https://example.com/a-d1.html", "https://example.com/c-d1.html"},
+        )
+        self.assertEqual(skipped, 2)
+        self.assertEqual(
+            filtered,
+            [{"source_url": "https://example.com/b-d1.html"}],
+        )
 
 
 class TestCrawlDocumentsRawHtml(unittest.IsolatedAsyncioTestCase):
