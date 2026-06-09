@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+import tempfile
 from pathlib import Path
 
 from src.evaluation.eval_logger import EvalLogger
@@ -33,6 +34,34 @@ class EvaluationRunnerTests(unittest.TestCase):
         self.assertTrue(summary_path.exists())
         parsed = json.loads(summary_path.read_text(encoding="utf-8"))
         self.assertEqual(parsed["total_questions"], 1)
+
+    def test_load_questions_supports_json_array_and_exports_answers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_path = Path(tmpdir) / "questions.json"
+            output_path = Path(tmpdir) / "answers.json"
+            input_path.write_text(
+                json.dumps(
+                    [
+                        {"id": "q1", "question": "test question one"},
+                        {"id": "q2", "question": "test question two"},
+                    ],
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            questions = load_questions(input_path)
+            self.assertEqual(len(questions), 2)
+            summary = evaluate_questions(questions[:1], run_id="unit_eval_answers", output_path=output_path)
+            self.assertEqual(summary["total_questions"], 1)
+            payload = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertIsInstance(payload, list)
+            self.assertEqual(len(payload), 1)
+            self.assertEqual(payload[0]["id"], 1)
+            self.assertEqual(payload[0]["question"], "test question one")
+            self.assertIn("answer", payload[0])
+            self.assertIn("relevant_docs", payload[0])
+            self.assertIn("relevant_articles", payload[0])
 
 
 if __name__ == "__main__":

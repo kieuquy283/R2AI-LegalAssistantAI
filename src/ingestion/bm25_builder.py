@@ -15,6 +15,26 @@ DEFAULT_CORPUS_PATH = Path("data/indexes/bm25_corpus.json")
 DEFAULT_METADATA_PATH = Path("data/indexes/bm25_metadata.json")
 
 
+def _combined_text(row: Dict[str, object]) -> str:
+    parts = [
+        row.get("doc_title"),
+        row.get("domain"),
+        row.get("legal_path"),
+        row.get("citation"),
+        row.get("article"),
+        row.get("clause"),
+        row.get("content"),
+        row.get("cleaned_text"),
+        row.get("embedding_text"),
+    ]
+    values = []
+    for part in parts:
+        text = str(part or "").strip()
+        if text:
+            values.append(text)
+    return "\n".join(values).strip()
+
+
 def build_bm25_artifacts(
     chunks: List[Dict[str, object]],
     documents: List[Dict[str, object]] | None = None,
@@ -30,7 +50,7 @@ def build_bm25_artifacts(
         metadata: List[Dict[str, object]] = []
         for index, document in enumerate(documents):
             doc_id = str(document.get("doc_id") or "")
-            text = str(document.get("cleaned_text") or "")[:2000]
+            text = _combined_text(document)[:4000]
             chunk_id = first_chunk_by_doc.get(doc_id) or doc_id
             tokens = tokenize_for_bm25(text)
             corpus.append(
@@ -56,11 +76,12 @@ def build_bm25_artifacts(
     corpus: List[Dict[str, object]] = []
     metadata: List[Dict[str, object]] = []
     for index, chunk in enumerate(chunks):
-        tokens = tokenize_for_bm25(str(chunk.get("embedding_text") or chunk.get("content") or ""))
+        text = _combined_text(chunk)
+        tokens = tokenize_for_bm25(text)
         corpus.append(
             {
                 "chunk_id": chunk["chunk_id"],
-                "text": chunk.get("embedding_text") or chunk.get("content"),
+                "text": text,
                 "tokens": tokens,
             }
         )

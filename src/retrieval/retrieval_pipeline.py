@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from typing import Dict
 
 from src.retrieval.confidence_checker import ConfidenceChecker
@@ -34,7 +35,11 @@ class RetrievalPipeline:
         }
 
     def run(self, query: str) -> Dict[str, object]:
-        seed_chunks = self.retriever.search(query, top_k=5)
+        seed_top_k = max(1, int(os.getenv("R2AI_RETRIEVAL_TOP_K", "5")))
+        max_contexts_override = os.getenv("R2AI_RETRIEVAL_MAX_CONTEXTS")
+        skip_expansion = os.getenv("R2AI_RETRIEVAL_SKIP_EXPANSION", "").strip().lower() in {"1", "true", "yes"}
+        skip_rerank = os.getenv("R2AI_RETRIEVAL_SKIP_RERANKING", "").strip().lower() in {"1", "true", "yes"}
+        seed_chunks = self.retriever.search(query, top_k=seed_top_k)
         initial_route = route_query(query, seed_chunks=seed_chunks)
         confidence_result = self.confidence_checker.check(
             query=query,
@@ -48,7 +53,7 @@ class RetrievalPipeline:
                 list(initial_route.get("domains") or []),
                 "Escalated after low-confidence initial retrieval.",
             )
-        expanded_contexts = self.expander.expand(query=query, route_result=route, seed_chunks=seed_chunks)
+        expanded_contexts = list(seed_chunks) if skip_expansion else self.expander.expand(query=query, route_result=route, seed_chunks=seed_chunks)
         max_contexts = {
             "SIMPLE_VECTOR": 5,
             "PARENT_CONTEXT": 7,
@@ -56,7 +61,15 @@ class RetrievalPipeline:
             "CROSS_DOMAIN_CONTEXT": 10,
             "MULTI_DOMAIN_COMPLEX": 12,
         }.get(route["route"], 7)
-        final_contexts = self.reranker.rerank(query, expanded_contexts, max_contexts=max_contexts)
+        if max_contexts_override:
+            try:
+                max_contexts = max(1, int(max_contexts_override))
+            except ValueError:
+                pass
+        final_contexts = list(expanded_contexts) if skip_rerank else self.reranker.rerank(query, expanded_contexts, max_contexts=max_contexts)
+        if not final_contexts:
+            fallback_contexts = list(expanded_contexts or seed_chunks)
+            final_contexts = fallback_contexts[:max_contexts]
         return {
             "query": query,
             "route": route["route"],
@@ -65,6 +78,7 @@ class RetrievalPipeline:
             "route_result": route,
             "confidence_result": confidence_result,
             "seed_chunks": seed_chunks,
+            "seed_contexts": seed_chunks,
             "expanded_contexts": expanded_contexts,
             "final_contexts": final_contexts,
         }

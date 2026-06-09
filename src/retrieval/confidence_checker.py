@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import unicodedata
+from pathlib import Path
 from typing import Dict, Iterable, List
 
 from src.retrieval.query_router import (
@@ -37,6 +38,7 @@ class ConfidenceChecker:
         self.min_top_score = float(min_top_score)
         self.min_score_gap = float(min_score_gap)
         self.min_seed_chunks = int(min_seed_chunks)
+        self.taxonomy = json.loads(Path("data/sources/domain_taxonomy.json").read_text(encoding="utf-8")) if Path("data/sources/domain_taxonomy.json").exists() else {}
 
     def _has_legal_signal(self, texts: Iterable[str]) -> bool:
         joined = _normalize(" ".join(texts))
@@ -115,13 +117,20 @@ class ConfidenceChecker:
         top_score = scores[0] if scores else 0.0
         score_gap = top_score - scores[1] if len(scores) > 1 else 0.0
         top_metadata = [dict(chunk.get("metadata") or {}) for chunk in seed_list[:3]]
-        top_texts = [str(chunk.get("content") or "") for chunk in seed_list[:3]]
+        top_texts = [
+            " ".join(
+                str(part or "")
+                for part in [
+                    chunk.get("content"),
+                    chunk.get("metadata", {}).get("doc_title"),
+                    chunk.get("metadata", {}).get("citation"),
+                    chunk.get("metadata", {}).get("article"),
+                ]
+                if str(part or "").strip()
+            )
+            for chunk in seed_list[:3]
+        ]
         domains = list(dict.fromkeys([str(domain) for domain in detect_domains(query)]))
-        seed_domains = {
-            str(metadata.get("domain"))
-            for metadata in top_metadata
-            if metadata.get("domain")
-        }
         satellite_domains = {domain for domain in domains if domain != "business_law"}
 
         reasons: List[str] = []
@@ -137,8 +146,15 @@ class ConfidenceChecker:
             reasons.append("missing_source_url")
         if top_texts and not self._has_legal_signal(top_texts):
             reasons.append("missing_legal_signal")
-        if satellite_domains and not satellite_domains.intersection(seed_domains):
-            reasons.append("satellite_domain_mismatch")
+        if satellite_domains:
+            combined_text = _normalize(" ".join(top_texts))
+            matching_domains = set()
+            for domain in satellite_domains:
+                keywords = [str(keyword) for keyword in self.taxonomy.get(domain, {}).get("keywords", [])]
+                if any(_normalize(keyword) in combined_text for keyword in keywords):
+                    matching_domains.add(domain)
+            if not matching_domains:
+                reasons.append("satellite_domain_mismatch")
         if self._contains_any(normalized_query, ["bi phat", "xu phat", "muc phat"]) and not self._contains_any(
             _normalize(" ".join(top_texts)),
             ["phat", "xu phat", "vi pham", "che tai", "nghi dinh"],

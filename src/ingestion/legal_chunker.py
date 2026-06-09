@@ -34,6 +34,15 @@ def _build_citation(doc_title: str, article: str | None, clause: str | None, poi
     return ", ".join(parts)
 
 
+def _build_embedding_text(*parts: object) -> str:
+    values = []
+    for part in parts:
+        text = str(part or "").strip()
+        if text:
+            values.append(text)
+    return "\n".join(values).strip()
+
+
 def _make_chunk(node: Dict[str, object], document: Dict[str, object], content: str) -> Dict[str, object]:
     chunk_id = stable_slug(f"{node['node_id']}_{node['level']}")
     doc_title = str(document.get("doc_title") or node.get("doc_id"))
@@ -55,7 +64,13 @@ def _make_chunk(node: Dict[str, object], document: Dict[str, object], content: s
         "legal_path": legal_path,
         "citation": citation,
         "content": content.strip(),
-        "embedding_text": f"{citation}\n{content.strip()}".strip(),
+        "embedding_text": _build_embedding_text(
+            doc_title,
+            node.get("domain"),
+            legal_path,
+            citation,
+            content.strip(),
+        ),
         "source_url": node["source_url"],
         "parent_id": node.get("parent_id"),
         "context_chunk_id": None,
@@ -80,6 +95,13 @@ def _build_context_chunk(article_node: Dict[str, object], document: Dict[str, ob
         "legal_path": _build_legal_path(doc_title, article, None, None),
         "citation": _build_citation(doc_title, article, None, None),
         "content": str(article_node.get("content") or "").strip(),
+        "embedding_text": _build_embedding_text(
+            doc_title,
+            article_node.get("domain"),
+            _build_legal_path(doc_title, article, None, None),
+            _build_citation(doc_title, article, None, None),
+            str(article_node.get("content") or "").strip(),
+        ),
         "source_url": article_node["source_url"],
         "child_chunk_ids": child_chunk_ids,
         "parent_id": article_node.get("parent_id"),

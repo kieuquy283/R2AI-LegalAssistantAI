@@ -73,7 +73,7 @@ class AnswerGenerator:
             "5. Lưu ý/rủi ro: Câu trả lời chỉ dựa trên context đã truy xuất, không bổ sung thêm căn cứ pháp luật ngoài dữ liệu hiện có."
         )
 
-    def generate(self, *, query: str, retrieval_result: Dict[str, object]) -> Dict[str, object]:
+    def generate(self, *, query: str, retrieval_result: Dict[str, object], use_llm: bool = True) -> Dict[str, object]:
         contexts = list(retrieval_result.get("final_contexts") or [])
         citations = self._collect_citations(contexts)
         used_context_ids = [str(context["chunk_id"]) for context in contexts]
@@ -83,11 +83,13 @@ class AnswerGenerator:
             route=str(retrieval_result.get("route") or ""),
             domains=list(retrieval_result.get("domains") or []),
         )
-        llm_answer = self.llm_client.generate(
-            system_prompt=prompt["system_prompt"],
-            user_prompt=prompt["user_prompt"],
-            temperature=self.temperature,
-        )
+        llm_answer = None
+        if use_llm:
+            llm_answer = self.llm_client.generate(
+                system_prompt=prompt["system_prompt"],
+                user_prompt=prompt["user_prompt"],
+                temperature=self.temperature,
+            )
         answer = llm_answer or self._fallback_answer(contexts=contexts, citations=citations)
         return {
             "answer": answer,

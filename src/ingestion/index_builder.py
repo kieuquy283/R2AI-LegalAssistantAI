@@ -41,9 +41,23 @@ def _build_metadata_row(index: int, chunk: Dict[str, object]) -> Dict[str, objec
 
 
 def _embedding_text_for_row(row: Dict[str, object]) -> str:
-    if row.get("citation") and row.get("content"):
-        return f"{row['citation']}\n{row['content']}"
-    return str(row.get("embedding_text") or row.get("content") or row.get("citation") or "")
+    parts = [
+        row.get("doc_title"),
+        row.get("domain"),
+        row.get("legal_path"),
+        row.get("citation"),
+        row.get("article"),
+        row.get("clause"),
+        row.get("content"),
+        row.get("cleaned_text"),
+        row.get("embedding_text"),
+    ]
+    values = []
+    for part in parts:
+        text = str(part or "").strip()
+        if text:
+            values.append(text)
+    return "\n".join(values).strip()
 
 
 def _encode_texts(

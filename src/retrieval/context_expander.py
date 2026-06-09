@@ -30,6 +30,9 @@ class ContextExpander:
 
         self.chunk_by_id = {str(row["chunk_id"]): row for row in self.chunks}
         self.context_by_id = {str(row["context_chunk_id"]): row for row in self.context_chunks}
+        self.chunks_by_domain: Dict[str, List[Dict[str, object]]] = {}
+        for chunk in self.chunks:
+            self.chunks_by_domain.setdefault(str(chunk.get("domain") or ""), []).append(chunk)
         self.explicit_ref_map: Dict[str, List[Dict[str, object]]] = {}
         for edge in self.explicit_refs:
             self.explicit_ref_map.setdefault(str(edge.get("source_chunk_id") or ""), []).append(edge)
@@ -153,39 +156,30 @@ class ContextExpander:
 
         if route_result.get("needs_cross_domain"):
             satellite_domains = [domain for domain in route_result.get("domains", []) if domain != "business_law"]
-            candidates: List[Dict[str, object]] = []
-            for chunk in self.chunks:
-                mapped_domains = set(self.cross_domain_map.get(str(chunk["chunk_id"]), []))
-                chunk_domain = str(chunk.get("domain") or "")
-                if not mapped_domains.intersection(satellite_domains) and chunk_domain not in satellite_domains:
+            for domain in satellite_domains:
+                if domain == "business_law":
                     continue
-                candidates.append(chunk)
-            candidates.sort(key=lambda chunk: self._lexical_score(query, str(chunk.get("embedding_text") or chunk.get("content") or "")), reverse=True)
-            per_domain_counts: Dict[str, int] = {}
-            for chunk in candidates:
-                mapped_domains = [
-                    domain
-                    for domain in self.cross_domain_map.get(str(chunk["chunk_id"]), [])
-                    if domain in satellite_domains
-                ]
-                if not mapped_domains and str(chunk.get("domain") or "") in satellite_domains:
-                    mapped_domains = [str(chunk.get("domain") or "")]
-                if not mapped_domains:
-                    continue
-                selected_domain = mapped_domains[0]
-                if per_domain_counts.get(selected_domain, 0) >= 2:
-                    continue
-                per_domain_counts[selected_domain] = per_domain_counts.get(selected_domain, 0) + 1
-                add(
-                    self._context_payload(
-                        str(chunk["chunk_id"]),
-                        str(chunk.get("content") or ""),
-                        self._chunk_metadata(chunk),
-                        context_type="cross_domain",
-                        relation_type="RELATED_DOMAIN",
-                        retrieval_score=self._lexical_score(query, str(chunk.get("content") or "")),
+                try:
+                    domain_hits = self.retriever.search(query, top_k=2, preferred_domains=[domain])
+                except TypeError:
+                    # Backward compatibility with test doubles or older retriever implementations.
+                    domain_hits = self.retriever.search(query, top_k=2)
+                for hit in domain_hits:
+                    metadata = dict(hit.get("metadata") or {})
+                    chunk_id = str(hit.get("chunk_id") or "")
+                    chunk = self.chunk_by_id.get(chunk_id)
+                    if not chunk:
+                        continue
+                    add(
+                        self._context_payload(
+                            chunk_id,
+                            str(hit.get("content") or chunk.get("content") or ""),
+                            self._chunk_metadata(chunk),
+                            context_type="cross_domain",
+                            relation_type="RELATED_DOMAIN",
+                            retrieval_score=float(hit.get("score") or hit.get("retrieval_score") or 0.0),
+                        )
                     )
-                )
 
         if route_result.get("needs_neighbor"):
             for seed in seed_chunks:

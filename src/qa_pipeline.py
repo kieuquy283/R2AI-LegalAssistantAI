@@ -15,6 +15,29 @@ class LegalQAPipeline:
         self.answer_generator = AnswerGenerator()
         self.grounding_validator = GroundingValidator()
 
+    def _context_quality(self, contexts: list[dict]) -> dict:
+        if not contexts:
+            return {"is_relevant": False, "reason": "no_contexts", "top_score": 0.0}
+        has_score_signal = any(
+            "final_score" in context or "score" in context or "rerank_score" in context
+            for context in contexts
+        )
+        top = dict(contexts[0])
+        top_score = float(top.get("final_score") or top.get("score") or 0.0)
+        lexical_overlap = float(top.get("lexical_overlap") or top.get("rerank_score") or 0.0)
+        title_match = float(top.get("title_match") or 0.0)
+        domain_match = float(top.get("domain_match") or 0.0)
+        topic_boost = float(top.get("topic_boost") or 0.0)
+        if not has_score_signal and any(str(dict(context.get("metadata") or {}).get("doc_title") or "").strip() for context in contexts):
+            return {"is_relevant": True, "reason": None, "top_score": 0.2}
+        if top_score < 0.12:
+            return {"is_relevant": False, "reason": "top_score_too_low", "top_score": top_score}
+        if top_score < 0.22 and max(lexical_overlap, title_match, domain_match, topic_boost) < 0.08:
+            return {"is_relevant": False, "reason": "weak_topic_alignment", "top_score": top_score}
+        if lexical_overlap < 0.03 and title_match < 0.03 and domain_match == 0.0 and topic_boost <= 0.0 and top_score < 0.25:
+            return {"is_relevant": False, "reason": "no_relevance_signal", "top_score": top_score}
+        return {"is_relevant": True, "reason": None, "top_score": top_score}
+
     def _build_relevant_docs(self, contexts: list[dict]) -> list[str]:
         relevant_docs: list[str] = []
         seen: set[str] = set()
@@ -30,6 +53,29 @@ class LegalQAPipeline:
             seen.add(ref)
             relevant_docs.append(ref)
         return relevant_docs
+
+    def _build_relevant_doc_details(self, contexts: list[dict]) -> list[dict]:
+        doc_details: list[dict] = []
+        seen: set[tuple[str, str]] = set()
+        for context in contexts:
+            metadata = dict(context.get("metadata") or {})
+            doc_title = str(metadata.get("doc_title") or metadata.get("doc_id") or "").strip()
+            source_url = str(metadata.get("source_url") or "").strip()
+            citation = str(metadata.get("citation") or doc_title).strip()
+            if not doc_title and not source_url and not citation:
+                continue
+            key = (doc_title, source_url)
+            if key in seen:
+                continue
+            seen.add(key)
+            doc_details.append(
+                {
+                    "doc_title": doc_title,
+                    "source_url": source_url,
+                    "citation": citation,
+                }
+            )
+        return doc_details
 
     def _build_citation_payload(self, contexts: list[dict]) -> list[dict]:
         citations: list[dict] = []
@@ -73,6 +119,33 @@ class LegalQAPipeline:
             relevant_articles.append(ref)
         return relevant_articles
 
+    def _build_relevant_article_details(self, contexts: list[dict]) -> list[dict]:
+        article_details: list[dict] = []
+        seen: set[tuple[str, str, str, str, str]] = set()
+        for context in contexts:
+            metadata = dict(context.get("metadata") or {})
+            doc_title = str(metadata.get("doc_title") or metadata.get("doc_id") or "").strip()
+            article = str(metadata.get("article") or "").strip()
+            clause = str(metadata.get("clause") or "").strip()
+            citation = str(metadata.get("citation") or doc_title).strip()
+            source_url = str(metadata.get("source_url") or "").strip()
+            if not doc_title and not article and not clause and not citation and not source_url:
+                continue
+            key = (doc_title, article, clause, citation, source_url)
+            if key in seen:
+                continue
+            seen.add(key)
+            article_details.append(
+                {
+                    "doc_title": doc_title,
+                    "article": article,
+                    "clause": clause or None,
+                    "citation": citation,
+                    "source_url": source_url,
+                }
+            )
+        return article_details
+
     def answer(
         self,
         question: str,
@@ -81,11 +154,17 @@ class LegalQAPipeline:
         use_llm: bool = True,
     ) -> dict:
         retrieval_result = self.retrieval_pipeline.run(question)
-        generated = self.answer_generator.generate(query=question, retrieval_result=retrieval_result, use_llm=use_llm)
-        final_contexts = list(retrieval_result.get("final_contexts") or [])
+        raw_final_contexts = list(retrieval_result.get("final_contexts") or [])
+        quality = self._context_quality(raw_final_contexts)
+        final_contexts = raw_final_contexts if quality["is_relevant"] else []
+        answer_retrieval_result = dict(retrieval_result)
+        answer_retrieval_result["final_contexts"] = final_contexts
+        generated = self.answer_generator.generate(query=question, retrieval_result=answer_retrieval_result, use_llm=use_llm)
         citations = self._build_citation_payload(final_contexts)
         relevant_docs = self._build_relevant_docs(final_contexts)
+        relevant_doc_details = self._build_relevant_doc_details(final_contexts)
         relevant_articles = self._build_relevant_articles(final_contexts)
+        relevant_article_details = self._build_relevant_article_details(final_contexts)
 
         answer_text = str(generated.get("answer") or "")
         if final_contexts and (
@@ -109,12 +188,17 @@ class LegalQAPipeline:
             "answer": answer_text,
             "citations": citations,
             "relevant_docs": relevant_docs,
+            "relevant_doc_details": relevant_doc_details,
             "relevant_articles": relevant_articles,
+            "relevant_article_details": relevant_article_details,
             "grounding": grounding,
+            "low_confidence": not quality["is_relevant"],
+            "low_confidence_reason": quality["reason"],
             "retrieved_chunks": retrieval_result["seed_chunks"],
             "seed_contexts": retrieval_result["seed_contexts"],
             "expanded_contexts": retrieval_result["expanded_contexts"],
             "final_contexts": final_contexts,
+            "raw_final_contexts": raw_final_contexts,
         }
 
 
