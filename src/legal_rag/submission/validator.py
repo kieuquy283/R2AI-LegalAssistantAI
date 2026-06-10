@@ -6,7 +6,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from legal_rag.generation.citation_validator import ARTICLE_PATTERN, extract_cited_articles
 from legal_rag.submission.schema import SubmissionItem
 from legal_rag.utils import load_json
 
@@ -33,7 +32,7 @@ def validate_submission_payload(payload: Any) -> SubmissionValidationReport:
     for index, raw_item in enumerate(payload):
         try:
             item = SubmissionItem.model_validate(raw_item)
-        except Exception as exc:  # pragma: no cover - pydantic error formatting
+        except Exception as exc:  # pragma: no cover
             errors.append(f"Item {index} is invalid: {exc}")
             continue
 
@@ -49,14 +48,6 @@ def validate_submission_payload(payload: Any) -> SubmissionValidationReport:
 
         if len(set(item.relevant_articles)) != len(item.relevant_articles):
             errors.append(f"Item {item.id} has duplicate relevant_articles entries.")
-
-        cited_articles = extract_cited_articles(item.answer)
-        cited_article_set = set(cited_articles)
-        referenced_article_numbers = {article_ref.split("|")[-1] for article_ref in item.relevant_articles}
-        if referenced_article_numbers and not cited_articles:
-            errors.append(f"Item {item.id} answer is missing Điều citations.")
-        if referenced_article_numbers and not referenced_article_numbers.issubset(cited_article_set):
-            warnings.append(f"Item {item.id} answer does not mention every relevant article explicitly.")
 
     return SubmissionValidationReport(
         ok=not errors,

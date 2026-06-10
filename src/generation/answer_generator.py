@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from typing import Dict, List
 
 from src.generation.llm_client import LLMClient
@@ -43,34 +44,30 @@ class AnswerGenerator:
     def _fallback_answer(self, *, contexts: List[Dict[str, object]], citations: List[Dict[str, object]]) -> str:
         if not contexts:
             return (
-                "1. Kết luận ngắn: Chưa đủ căn cứ để kết luận chắc chắn.\n"
-                "2. Căn cứ pháp luật: Hiện chưa có điều/khoản phù hợp trong context được truy xuất.\n"
-                "3. Phân tích áp dụng vào tình huống: Nếu thiếu context thì không nên suy diễn thêm căn cứ pháp luật.\n"
-                "4. Việc SME nên làm: Cần bổ sung thông tin thực tế hoặc truy vấn cụ thể hơn.\n"
-                "5. Lưu ý/rủi ro: Câu trả lời này chỉ phản ánh việc chưa đủ căn cứ trong dữ liệu đã truy xuất."
+                "Chưa đủ thông tin đáng tin cậy trong dữ liệu truy xuất để trả lời dứt điểm câu hỏi này; "
+                "cần bổ sung thêm tình tiết thực tế hoặc diễn đạt truy vấn cụ thể hơn để xác định đúng quy định áp dụng."
             )
 
         lead = contexts[0]
         lead_meta = dict(lead.get("metadata") or {})
-        legal_basis = "; ".join(
-            citation.get("citation") or f"{citation.get('doc_title')} {citation.get('article')}"
-            for citation in citations[:3]
-            if citation.get("doc_title")
-        )
-        snippets = []
+        snippets: List[str] = []
         for context in contexts[:2]:
-            text = " ".join(str(context.get("content") or "").split())
-            snippets.append(text[:260])
+            text = re.sub(r"\s+", " ", str(context.get("content") or "")).strip()
+            if text:
+                snippets.append(text[:280].rstrip(" ,;:"))
         analysis = " ".join(snippets).strip()
         if not analysis:
-            analysis = "Context hiện có chưa đủ dài để trích đoạn rõ hơn nhưng vẫn cho thấy căn cứ chính nằm ở điều luật đã truy xuất."
+            analysis = "Ngữ liệu truy xuất cho thấy có quy định liên quan nhưng chưa đủ dài để trích xuất thêm chi tiết an toàn."
 
+        lead_title = str(lead_meta.get("doc_title") or "").strip()
+        if lead_title:
+            return (
+                f"Theo nội dung truy xuất từ {lead_title}, vấn đề này có thể được hiểu như sau: {analysis}. "
+                "Doanh nghiệp nên đối chiếu thêm tình tiết thực tế, thời điểm áp dụng và hồ sơ cụ thể trước khi ra quyết định."
+            )
         return (
-            f"1. Kết luận ngắn: Câu hỏi này trước hết được điều chỉnh bởi {lead_meta.get('citation') or lead_meta.get('article') or 'căn cứ pháp luật đã truy xuất'}.\n"
-            f"2. Căn cứ pháp luật: {legal_basis or 'Chưa đủ căn cứ pháp luật cụ thể trong context hiện có.'}\n"
-            f"3. Phân tích áp dụng vào tình huống: {analysis}\n"
-            "4. Việc SME nên làm: Doanh nghiệp nên đối chiếu hồ sơ, thời điểm áp dụng và nghĩa vụ cụ thể với điều/khoản đã nêu trước khi ra quyết định.\n"
-            "5. Lưu ý/rủi ro: Câu trả lời chỉ dựa trên context đã truy xuất, không bổ sung thêm căn cứ pháp luật ngoài dữ liệu hiện có."
+            f"Theo nội dung truy xuất hiện có, vấn đề này có thể được hiểu như sau: {analysis}. "
+            "Doanh nghiệp nên đối chiếu thêm tình tiết thực tế và hồ sơ cụ thể trước khi áp dụng."
         )
 
     def generate(self, *, query: str, retrieval_result: Dict[str, object], use_llm: bool = True) -> Dict[str, object]:

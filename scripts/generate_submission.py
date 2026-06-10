@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -81,6 +82,53 @@ def parse_question(raw_item: dict, fallback_id: int) -> tuple[int, str]:
     return question_id, question
 
 
+def normalize_answer(text: str) -> str:
+    cleaned = str(text or "").replace("**", " ")
+    cleaned = re.sub(r"\r?\n+", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return cleaned
+
+    numbered_sections = re.split(r"(?=\b[1-5]\.\s*)", cleaned)
+    if sum(1 for section in numbered_sections if re.match(r"^\s*[1-5]\.\s*", section)) >= 2:
+        kept_sections: list[str] = []
+        for section in numbered_sections:
+            match = re.match(r"^\s*([1-5])\.\s*(.*)$", section)
+            if not match:
+                continue
+            if match.group(1) == "2":
+                continue
+            body = re.sub(r"^[^:]{0,80}:\s*", "", match.group(2)).strip()
+            if body:
+                kept_sections.append(body)
+        if kept_sections:
+            return re.sub(r"\s+", " ", " ".join(kept_sections)).strip(" ,;:-")
+
+    heading_patterns = [
+        r"\b\d+\.\s*Kết luận ngắn\s*:\s*",
+        r"\b\d+\.\s*Phân tích áp dụng vào tình huống\s*:\s*",
+        r"\b\d+\.\s*Việc SME nên làm\s*:\s*",
+        r"\b\d+\.\s*Lưu ý/rủi ro\s*:\s*",
+        r"\bKết luận ngắn\s*:\s*",
+        r"\bPhân tích áp dụng vào tình huống\s*:\s*",
+        r"\bViệc SME nên làm\s*:\s*",
+        r"\bLưu ý/rủi ro\s*:\s*",
+    ]
+    for pattern in heading_patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+
+    cleaned = re.sub(
+        r"\b\d+\.\s*Căn cứ pháp luật\s*:.*?(?=(\b\d+\.\s*[A-ZÀ-Ỹa-zà-ỹ]|$))",
+        " ",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"\bCăn cứ pháp luật\s*:.*$", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b\d+\.\s*", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,;:-")
+    return cleaned
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate competition submission results.json.")
     parser.add_argument("--input", required=True)
@@ -99,7 +147,7 @@ def main() -> None:
         return SubmissionItem(
             id=question_id,
             question=question,
-            answer=str(qa_result.get("answer") or ""),
+            answer=normalize_answer(str(qa_result.get("answer") or "")),
             relevant_docs=list(dict.fromkeys(qa_result.get("relevant_docs") or [])),
             relevant_articles=list(dict.fromkeys(qa_result.get("relevant_articles") or [])),
         )

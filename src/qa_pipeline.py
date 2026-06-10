@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+from pathlib import Path
 
 from src.generation.answer_generator import AnswerGenerator
 from src.generation.grounding_validator import GroundingValidator
@@ -14,6 +16,65 @@ class LegalQAPipeline:
         self.retrieval_pipeline = RetrievalPipeline()
         self.answer_generator = AnswerGenerator()
         self.grounding_validator = GroundingValidator()
+        self.document_catalog = self._load_document_catalog()
+
+    @staticmethod
+    def _load_document_catalog() -> dict[str, dict]:
+        catalog: dict[str, dict] = {}
+        documents_path = Path(__file__).resolve().parents[1] / "data" / "processed" / "documents.jsonl"
+        if not documents_path.exists():
+            return catalog
+        with documents_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                doc_id = str(row.get("doc_id") or "").strip()
+                if doc_id:
+                    catalog[doc_id] = row
+        return catalog
+
+    @staticmethod
+    def _normalize_space(text: str) -> str:
+        return re.sub(r"\s+", " ", text or "").strip(" ,;:-")
+
+    def _lookup_document(self, metadata: dict) -> dict:
+        doc_id = str(metadata.get("doc_id") or "").strip()
+        if doc_id and doc_id in self.document_catalog:
+            return dict(self.document_catalog[doc_id])
+        return {}
+
+    def _format_doc_name(self, metadata: dict) -> tuple[str, str]:
+        document = self._lookup_document(metadata)
+        doc_type = self._normalize_space(str(document.get("doc_type") or metadata.get("doc_type") or ""))
+        doc_number = self._normalize_space(str(document.get("doc_number") or metadata.get("doc_number") or ""))
+        doc_title = self._normalize_space(str(document.get("doc_title") or metadata.get("doc_title") or metadata.get("doc_id") or ""))
+
+        summary = doc_title
+        if doc_type and summary.lower().startswith(doc_type.lower()):
+            summary = summary[len(doc_type) :].strip(" ,:-")
+        if doc_number:
+            summary = re.sub(rf"(^|,\s*)số\s+{re.escape(doc_number)}", " ", summary, flags=re.IGNORECASE)
+            summary = re.sub(rf"\b{re.escape(doc_number)}\b", " ", summary, flags=re.IGNORECASE)
+        summary = re.sub(r"^của\s+[^,]+?\s+về\s+việc\s+", "", summary, flags=re.IGNORECASE)
+        summary = re.sub(r"^của\s+[^,]+?\s+về\s+", "", summary, flags=re.IGNORECASE)
+        summary = re.sub(r"^của\s+[^,]+?\s+", "", summary, flags=re.IGNORECASE)
+        summary = self._normalize_space(summary)
+
+        if doc_type and doc_number and summary:
+            return doc_number, f"{doc_type} {doc_number} {summary}"
+        if doc_type and doc_number:
+            return doc_number, f"{doc_type} {doc_number}"
+        if doc_number and doc_title:
+            return doc_number, doc_title
+        if doc_title:
+            code = doc_number or self._normalize_space(str(metadata.get("doc_id") or ""))
+            return code, doc_title
+        return self._normalize_space(str(metadata.get("doc_id") or "")), self._normalize_space(str(metadata.get("doc_id") or ""))
 
     def _context_quality(self, contexts: list[dict]) -> dict:
         if not contexts:
@@ -43,11 +104,10 @@ class LegalQAPipeline:
         seen: set[str] = set()
         for context in contexts:
             metadata = dict(context.get("metadata") or {})
-            doc_id = str(metadata.get("doc_id") or "").strip()
-            doc_title = str(metadata.get("doc_title") or doc_id).strip()
-            if not doc_title:
+            doc_code, doc_name = self._format_doc_name(metadata)
+            if not doc_code or not doc_name:
                 continue
-            ref = f"{doc_id or doc_title}|{doc_title}"
+            ref = f"{doc_code}|{doc_name}"
             if ref in seen:
                 continue
             seen.add(ref)
@@ -70,6 +130,7 @@ class LegalQAPipeline:
             seen.add(key)
             doc_details.append(
                 {
+                    "doc_id": str(metadata.get("doc_id") or "").strip(),
                     "doc_title": doc_title,
                     "source_url": source_url,
                     "citation": citation,
@@ -107,12 +168,11 @@ class LegalQAPipeline:
         seen: set[str] = set()
         for context in contexts:
             metadata = dict(context.get("metadata") or {})
-            doc_id = str(metadata.get("doc_id") or "").strip()
-            doc_title = str(metadata.get("doc_title") or doc_id).strip()
+            doc_code, doc_name = self._format_doc_name(metadata)
             article = str(metadata.get("article") or "").strip()
-            if not doc_title or not article:
+            if not doc_code or not doc_name or not article:
                 continue
-            ref = f"{doc_id or doc_title}|{doc_title}|{article}"
+            ref = f"{doc_code}|{doc_name}|{article}"
             if ref in seen:
                 continue
             seen.add(ref)
@@ -137,6 +197,7 @@ class LegalQAPipeline:
             seen.add(key)
             article_details.append(
                 {
+                    "doc_id": str(metadata.get("doc_id") or "").strip(),
                     "doc_title": doc_title,
                     "article": article,
                     "clause": clause or None,
