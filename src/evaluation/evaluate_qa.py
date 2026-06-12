@@ -15,6 +15,7 @@ from typing import Dict, List
 
 from src.evaluation.output_formatter import extract_legal_doc_code, format_article_ref, format_doc_ref, format_submission_record
 from src.evaluation.eval_logger import EvalLogger
+from src.evaluation.comprehensive_evaluator import ComprehensiveEvaluator, evaluate_batch
 from src.qa_pipeline import LegalQAPipeline
 
 LOGGER = logging.getLogger(__name__)
@@ -467,6 +468,14 @@ def evaluate_questions(
                 last_question_id=question_id,
             )
 
+    # Comprehensive evaluation
+    print("\nRunning comprehensive evaluation...")
+    comprehensive_metrics = evaluate_batch(
+        evaluated_rows,
+        gold_data=selected_questions,
+        auto_eval=False,
+    )
+    
     summary = {
         "total_questions": total_questions,
         "citation_present_rate": citation_present / total_questions if total_questions else 0.0,
@@ -475,6 +484,7 @@ def evaluate_questions(
         "avg_context_count": total_contexts / total_questions if total_questions else 0.0,
         "avg_latency_seconds": sum(latencies) / total_questions if total_questions else 0.0,
         "legal_ref_hit_rate": legal_ref_hits / legal_ref_total if legal_ref_total else None,
+        "comprehensive_evaluation": comprehensive_metrics,
     }
     summary_path = Path("logs/eval_runs") / f"{run_id}_summary.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -484,6 +494,18 @@ def evaluate_questions(
     print(f"EVAL DONE: run_id={run_id}")
     print(f"total_questions={total_questions} elapsed={total_elapsed / 60:.1f}m")
     print(f"avg_latency={summary['avg_latency_seconds']:.2f}s")
+    print(f"\nCOMPREHENSIVE METRICS:")
+    ce = comprehensive_metrics
+    print(f"  Legal Accuracy:     {ce['legal_accuracy']:.1%}")
+    print(f"  Faithfulness:       {ce['faithfulness']:.1%}")
+    print(f"  Completeness:       {ce['completeness']:.1%}")
+    print(f"  Practicality:       {ce['practicality']:.1%}")
+    print(f"  Clarity:            {ce['clarity']:.1%}")
+    if ce['f2'] is not None:
+        print(f"  Precision:          {ce['precision']:.1%}")
+        print(f"  Recall:             {ce['recall']:.1%}")
+        print(f"  F2:                 {ce['f2']:.1%}")
+        print(f"  MRR:                {ce['mrr']:.4f}")
     print(f"summary_path={summary_path}")
     print(f"output_path={export_path or ''}")
     print(f"{'='*60}\n")
