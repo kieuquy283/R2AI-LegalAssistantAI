@@ -29,11 +29,13 @@ class RetrievalPipeline:
         self.qdrant_retriever = None
         self.bm25_retriever = None
         self.exact_search = None
-        self._use_hybrid_reranker = os.getenv("HYBRID_RERANKER", "").strip().lower() in {"1", "true", "yes"}
+        self._use_hybrid_reranker = os.getenv("HYBRID_RERANKER", "true").strip().lower() not in {"0", "false", "no", "off"}
         if self.backend == "qdrant":
             self.qdrant_retriever = QdrantRetriever(config=self.runtime_config)
             self.bm25_retriever = BM25Retriever()
             self.exact_search = LegalExactSearch()
+            if self._use_hybrid_reranker:
+                self.reranker = HybridReranker()
         else:
             self.retriever = HybridRetriever()
             self.expander = ContextExpander(retriever=self.retriever)
