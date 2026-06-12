@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 
+from rag.config.runtime import get_retrieval_runtime_config
 from rag.config.settings import resolve_project_path
 
 
@@ -24,3 +25,5 @@ DEFAULT_CORPUS_JSON = resolve_project_path("data/retrieval_corpus.json")
 DEFAULT_EVALUATION_JSON = resolve_project_path("data/evaluation.json")
 DEFAULT_MULTITURN_EVALUATION_JSON = resolve_project_path("data/multiturn_evaluation.json")
 DEFAULT_MULTITURN_FILLED_JSON = resolve_project_path("data/multiturn_evaluation_filled.json")
+
+RUNTIME_CONFIG = get_retrieval_runtime_config()

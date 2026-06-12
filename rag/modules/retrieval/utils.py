@@ -67,22 +67,43 @@ def dense_distance_to_similarity(distance: float, max_distance: float) -> float:
     return float(max_distance - distance)
 
 
-def normalize_dense_scores(results: List[RetrievalResult]) -> List[RetrievalResult]:
+def normalize_dense_scores(
+    results: List[RetrievalResult],
+    score_mode: str = "similarity",
+) -> List[RetrievalResult]:
+    """
+    Normalize dense retrieval scores.
+
+    score_mode:
+    - "similarity": higher raw_score is better. Use this for Qdrant cosine score.
+    - "distance": lower raw_score is better. Use this for FAISS/L2 distance style scores.
+    """
     if not results:
         return results
 
-    raw_scores = [result.raw_score if result.raw_score is not None else result.score for result in results]
-    max_distance = max(raw_scores)
-    converted = [dense_distance_to_similarity(score, max_distance) for score in raw_scores]
+    raw_scores = [
+        float(result.raw_score if result.raw_score is not None else result.score or 0.0)
+        for result in results
+    ]
+
+    if score_mode == "distance":
+        max_distance = max(raw_scores)
+        converted = [dense_distance_to_similarity(score, max_distance) for score in raw_scores]
+    else:
+        converted = raw_scores
+
     normalized = min_max_normalize(converted)
 
-    for result, similarity, score in zip(results, converted, normalized):
+    for result, raw_score, score in zip(results, raw_scores, normalized):
+        result.raw_score = float(raw_score)
         result.normalized_score = float(score)
         result.score = float(score)
         result.dense_score = float(score)
         result.final_score = result.final_score if result.final_score is not None else float(score)
-        if result.raw_score is None:
-            result.raw_score = float(max_distance - similarity)
+
+        result.metadata = dict(result.metadata or {})
+        result.metadata["raw_dense_score"] = float(raw_score)
+        result.metadata["dense_score_mode"] = score_mode
 
     return results
 

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
-from src.ingestion.common import read_jsonl, stable_slug, write_jsonl
+from src.ingestion.common import read_jsonl, slugify_vi, write_jsonl
 
 
 DEFAULT_DOCUMENTS_PATH = Path("data/processed/documents.jsonl")
@@ -56,7 +56,7 @@ def _edge_row(
     confidence: float = 1.0,
     metadata: Dict[str, object] | None = None,
 ) -> Dict[str, object]:
-    edge_id = stable_slug(f"{source_id}|{relation_type}|{target_id}|{target_domain or ''}|{ref_text or ''}")
+    edge_id = slugify_vi(f"{source_id}|{relation_type}|{target_id}|{target_domain or ''}|{ref_text or ''}")
     return {
         "edge_id": edge_id,
         "source_id": source_id,

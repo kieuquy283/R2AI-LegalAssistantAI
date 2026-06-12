@@ -36,3 +36,23 @@ python scripts/evaluate_submission.py \
   --gold data/processed/sample_gold.json \
   --output data/submissions/sample_eval_report.json
 ```
+
+## R2AI Stage 1 flow
+
+```bash
+python -m src.evaluation.prepare_r2ai_dataset \
+  --input data/evaluation/R2AIStage1DATA.json \
+  --output data/evaluation/r2ai_stage1_questions.jsonl
+
+python scripts/generate_submission.py \
+  --input data/evaluation/r2ai_stage1_questions.jsonl \
+  --output data/submissions/results.json
+```
+
+## Stage 1 Orchestration
+
+```bash
+python scripts/run_r2ai_stage1_pipeline.py --derive-gold
+```
+
+If you have a real gold file for Stage 1, place it at `data/processed/r2ai_stage1_gold.json` or pass `--gold` to the orchestration script. The derived gold used in this repo is only a smoke-test placeholder.

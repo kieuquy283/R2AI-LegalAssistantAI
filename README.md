@@ -37,6 +37,16 @@ pip install -r requirements.txt
 
 Nếu có `.env`, giữ theo `.env.example`. Repo không yêu cầu crawl live để chạy retrieval/QA/evaluation đã build sẵn.
 
+## Qdrant local
+
+Chạy Qdrant local để dùng backend retrieval mới:
+
+```bash
+docker run -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage qdrant/qdrant
+```
+
+Sau đó đặt `RETRIEVAL_BACKEND=qdrant` trong `.env` hoặc shell environment.
+
 ## Dữ liệu đầu ra hiện có
 
 Các artifact chính đã được build:

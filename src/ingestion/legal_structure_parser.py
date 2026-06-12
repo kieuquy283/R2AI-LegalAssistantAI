@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
-from src.ingestion.common import read_jsonl, stable_slug, write_jsonl
+from src.ingestion.common import read_jsonl, slugify_vi, write_jsonl
 
 
 DEFAULT_INPUT_PATH = Path("data/processed/cleaned_documents.jsonl")
@@ -20,7 +20,7 @@ POINT_RE = re.compile(r"^\s*([a-zđ])\)\s+(.*)$", re.IGNORECASE)
 
 def _make_node_id(doc_id: str, level: str, *parts: str) -> str:
     key = "_".join(part for part in parts if part)
-    return stable_slug(f"{doc_id}_{level}_{key}")
+    return slugify_vi(f"{doc_id}_{level}_{key}")
 
 
 def _finalize_node(
@@ -116,12 +116,13 @@ def parse_document_structure(document: Dict[str, str]) -> List[Dict[str, object]
             _finalize_node(nodes, current_article, cursor)
             article_number = article_match.group(1)
             article_title = article_match.group(2).strip() or None
+            article_label = f"Điều {article_number}"
             current_article = {
-                "node_id": _make_node_id(document["doc_id"], "article", article_number),
+                "node_id": f"{document['doc_id']}|{article_label}",
                 "doc_id": document["doc_id"],
                 "level": "article",
                 "title": line,
-                "article": f"Điều {article_number}",
+                "article": article_label,
                 "article_title": article_title,
                 "clause": None,
                 "point": None,

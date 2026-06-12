@@ -31,8 +31,13 @@ tqdm>=4.66.0
 pyyaml>=6.0.0
 beautifulsoup4>=4.14.0
 crawl4ai>=0.8.9
+pandas>=2.2.2
+pyarrow>=17.0.0
+datasets>=2.20.0
+huggingface_hub>=0.24.0
+qdrant-client>=1.10.1
 
 sentence-transformers
 torch
 
-rank-bm25
+rank-bm25>=0.2.2

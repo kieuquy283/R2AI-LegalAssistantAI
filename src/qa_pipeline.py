@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
+from rag.config.runtime import get_retrieval_runtime_config
 from src.generation.answer_generator import AnswerGenerator
 from src.generation.grounding_validator import GroundingValidator
 from src.retrieval.retrieval_pipeline import RetrievalPipeline
@@ -13,30 +15,48 @@ from src.retrieval.retrieval_pipeline import RetrievalPipeline
 
 class LegalQAPipeline:
     def __init__(self) -> None:
+        self.runtime_config = get_retrieval_runtime_config()
         self.retrieval_pipeline = RetrievalPipeline()
         self.answer_generator = AnswerGenerator()
         self.grounding_validator = GroundingValidator()
-        self.document_catalog = self._load_document_catalog()
+        self.document_catalog, self.document_title_catalog = self._load_document_catalog()
 
     @staticmethod
-    def _load_document_catalog() -> dict[str, dict]:
+    def _load_document_catalog() -> tuple[dict[str, dict], dict[str, dict]]:
         catalog: dict[str, dict] = {}
-        documents_path = Path(__file__).resolve().parents[1] / "data" / "processed" / "documents.jsonl"
-        if not documents_path.exists():
-            return catalog
-        with documents_path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                doc_id = str(row.get("doc_id") or "").strip()
-                if doc_id:
-                    catalog[doc_id] = row
-        return catalog
+        title_catalog: dict[str, dict] = {}
+        base_dir = Path(__file__).resolve().parents[1] / "data" / "processed"
+        overridden = os.getenv("R2AI_DOCUMENTS_PATH", "").strip()
+        if overridden:
+            candidates = [Path(overridden).name]
+            base_dir = Path(overridden).parent
+        else:
+            candidates = []
+        backend = str(os.getenv("RETRIEVAL_BACKEND", "faiss")).strip().lower()
+        if not candidates:
+            candidates = ["merged_documents.jsonl", "documents.jsonl"] if backend == "qdrant" else ["documents.jsonl", "merged_documents.jsonl"]
+        for filename in candidates:
+            documents_path = base_dir / filename
+            if not documents_path.exists():
+                continue
+            with documents_path.open("r", encoding="utf-8") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    doc_id = str(row.get("doc_id") or "").strip()
+                    if doc_id:
+                        catalog[doc_id] = row
+                    doc_title = re.sub(r"\s+", " ", str(row.get("doc_title") or "").strip().lower())
+                    if doc_title:
+                        title_catalog[doc_title] = row
+            if catalog or title_catalog:
+                break
+        return catalog, title_catalog
 
     @staticmethod
     def _normalize_space(text: str) -> str:
@@ -46,7 +66,17 @@ class LegalQAPipeline:
         doc_id = str(metadata.get("doc_id") or "").strip()
         if doc_id and doc_id in self.document_catalog:
             return dict(self.document_catalog[doc_id])
+        doc_title = re.sub(r"\s+", " ", str(metadata.get("doc_title") or "").strip().lower())
+        if doc_title and doc_title in self.document_title_catalog:
+            return dict(self.document_title_catalog[doc_title])
         return {}
+
+    @staticmethod
+    def _context_metadata(context: dict) -> dict:
+        merged = dict(context)
+        nested = dict(context.get("metadata") or {})
+        merged.update({key: value for key, value in nested.items() if value not in (None, "", [])})
+        return merged
 
     def _format_doc_name(self, metadata: dict) -> tuple[str, str]:
         document = self._lookup_document(metadata)
@@ -76,23 +106,67 @@ class LegalQAPipeline:
             return code, doc_title
         return self._normalize_space(str(metadata.get("doc_id") or "")), self._normalize_space(str(metadata.get("doc_id") or ""))
 
-    def _context_quality(self, contexts: list[dict]) -> dict:
+    def _context_quality(self, question: str, contexts: list[dict], route: str = "") -> dict:
         if not contexts:
             return {"is_relevant": False, "reason": "no_contexts", "top_score": 0.0}
         has_score_signal = any(
             "final_score" in context or "score" in context or "rerank_score" in context
             for context in contexts
         )
-        top = dict(contexts[0])
+        question_text = self._normalize_space(question).lower()
+        top = self._context_metadata(contexts[0])
         top_score = float(top.get("final_score") or top.get("score") or 0.0)
         lexical_overlap = float(top.get("lexical_overlap") or top.get("rerank_score") or 0.0)
         title_match = float(top.get("title_match") or 0.0)
         domain_match = float(top.get("domain_match") or 0.0)
         topic_boost = float(top.get("topic_boost") or 0.0)
-        if not has_score_signal and any(str(dict(context.get("metadata") or {}).get("doc_title") or "").strip() for context in contexts):
+        has_title_signal = bool(
+            str(top.get("doc_title") or "").strip()
+            and (
+                str(top.get("article") or "").strip()
+                or str(top.get("citation") or "").strip()
+            )
+        )
+        if not has_score_signal and any(str(self._context_metadata(context).get("doc_title") or "").strip() for context in contexts):
             return {"is_relevant": True, "reason": None, "top_score": 0.2}
-        if top_score < 0.12:
+        if top_score < 0.08:
+            route = str(route or "").upper()
+            tax_question_signal = any(
+                keyword in question_text
+                for keyword in ("thuế", "tài chính", "kế toán", "miễn thuế", "giảm thuế", "đăng ký thuế")
+            )
+            if route in {"PARENT_CONTEXT", "SIMPLE_VECTOR"} and tax_question_signal:
+                for context in contexts[:5]:
+                    metadata = self._context_metadata(context)
+                    if str(metadata.get("domain") or "").strip().lower() != "tax":
+                        continue
+                    context_score = float(context.get("final_score") or context.get("score") or 0.0)
+                    context_lexical = float(context.get("lexical_overlap") or context.get("rerank_score") or 0.0)
+                    has_context_signal = bool(
+                        str(metadata.get("doc_title") or "").strip()
+                        and (
+                            str(metadata.get("article") or "").strip()
+                            or str(metadata.get("citation") or "").strip()
+                        )
+                    )
+                    if has_context_signal and context_score >= 0.06 and context_lexical >= 0.28:
+                        return {"is_relevant": True, "reason": None, "top_score": context_score}
+            if (
+                route in {"PARENT_CONTEXT", "SIMPLE_VECTOR"}
+                and str(top.get("domain") or "").strip().lower() == "tax"
+                and has_title_signal
+                and tax_question_signal
+                and lexical_overlap >= 0.28
+            ):
+                return {"is_relevant": True, "reason": None, "top_score": top_score}
             return {"is_relevant": False, "reason": "top_score_too_low", "top_score": top_score}
+        if top_score < 0.12:
+            strong_signal = max(lexical_overlap, title_match, domain_match, topic_boost)
+            route = str(route or "").upper()
+            if route in {"PARENT_CONTEXT", "SIMPLE_VECTOR"} and has_title_signal and strong_signal >= 0.08:
+                return {"is_relevant": True, "reason": None, "top_score": top_score}
+            if route in {"CROSS_DOMAIN_CONTEXT", "LEGAL_GRAPH_CONTEXT"} and has_title_signal and strong_signal >= 0.10:
+                return {"is_relevant": True, "reason": None, "top_score": top_score}
         if top_score < 0.22 and max(lexical_overlap, title_match, domain_match, topic_boost) < 0.08:
             return {"is_relevant": False, "reason": "weak_topic_alignment", "top_score": top_score}
         if lexical_overlap < 0.03 and title_match < 0.03 and domain_match == 0.0 and topic_boost <= 0.0 and top_score < 0.25:
@@ -102,8 +176,9 @@ class LegalQAPipeline:
     def _build_relevant_docs(self, contexts: list[dict]) -> list[str]:
         relevant_docs: list[str] = []
         seen: set[str] = set()
-        for context in contexts:
-            metadata = dict(context.get("metadata") or {})
+        citation_contexts = self._citation_contexts(contexts)
+        for context in citation_contexts:
+            metadata = self._context_metadata(context)
             doc_code, doc_name = self._format_doc_name(metadata)
             if not doc_code or not doc_name:
                 continue
@@ -112,13 +187,15 @@ class LegalQAPipeline:
                 continue
             seen.add(ref)
             relevant_docs.append(ref)
+            if len(relevant_docs) >= self.runtime_config.max_docs:
+                break
         return relevant_docs
 
     def _build_relevant_doc_details(self, contexts: list[dict]) -> list[dict]:
         doc_details: list[dict] = []
         seen: set[tuple[str, str]] = set()
-        for context in contexts:
-            metadata = dict(context.get("metadata") or {})
+        for context in self._citation_contexts(contexts):
+            metadata = self._context_metadata(context)
             doc_title = str(metadata.get("doc_title") or metadata.get("doc_id") or "").strip()
             source_url = str(metadata.get("source_url") or "").strip()
             citation = str(metadata.get("citation") or doc_title).strip()
@@ -136,13 +213,15 @@ class LegalQAPipeline:
                     "citation": citation,
                 }
             )
+            if len(doc_details) >= self.runtime_config.max_docs:
+                break
         return doc_details
 
     def _build_citation_payload(self, contexts: list[dict]) -> list[dict]:
         citations: list[dict] = []
         seen: set[tuple[str, str, str]] = set()
-        for context in contexts:
-            metadata = dict(context.get("metadata") or {})
+        for context in self._citation_contexts(contexts):
+            metadata = self._context_metadata(context)
             key = (
                 str(metadata.get("doc_title") or ""),
                 str(metadata.get("article") or ""),
@@ -161,13 +240,15 @@ class LegalQAPipeline:
                     "source_url": metadata.get("source_url"),
                 }
             )
+            if len(citations) >= self.runtime_config.max_contexts:
+                break
         return citations
 
     def _build_relevant_articles(self, contexts: list[dict]) -> list[str]:
         relevant_articles: list[str] = []
         seen: set[str] = set()
-        for context in contexts:
-            metadata = dict(context.get("metadata") or {})
+        for context in self._citation_contexts(contexts):
+            metadata = self._context_metadata(context)
             doc_code, doc_name = self._format_doc_name(metadata)
             article = str(metadata.get("article") or "").strip()
             if not doc_code or not doc_name or not article:
@@ -177,13 +258,15 @@ class LegalQAPipeline:
                 continue
             seen.add(ref)
             relevant_articles.append(ref)
+            if len(relevant_articles) >= self.runtime_config.max_articles:
+                break
         return relevant_articles
 
     def _build_relevant_article_details(self, contexts: list[dict]) -> list[dict]:
         article_details: list[dict] = []
         seen: set[tuple[str, str, str, str, str]] = set()
-        for context in contexts:
-            metadata = dict(context.get("metadata") or {})
+        for context in self._citation_contexts(contexts):
+            metadata = self._context_metadata(context)
             doc_title = str(metadata.get("doc_title") or metadata.get("doc_id") or "").strip()
             article = str(metadata.get("article") or "").strip()
             clause = str(metadata.get("clause") or "").strip()
@@ -205,7 +288,40 @@ class LegalQAPipeline:
                     "source_url": source_url,
                 }
             )
+            if len(article_details) >= self.runtime_config.max_articles:
+                break
         return article_details
+
+    def _citation_contexts(self, contexts: list[dict]) -> list[dict]:
+        if not contexts:
+            return []
+        strict: list[dict] = []
+        for context in contexts:
+            score = float(context.get("final_score") or context.get("score") or 0.0)
+            if score >= self.runtime_config.citation_score_threshold:
+                strict.append(context)
+        if strict:
+            return strict
+
+        best = float(contexts[0].get("final_score") or contexts[0].get("score") or 0.0)
+        relaxed_threshold = min(
+            self.runtime_config.citation_score_threshold,
+            max(0.08, best * 0.7),
+        )
+        relaxed: list[dict] = []
+        for context in contexts:
+            score = float(context.get("final_score") or context.get("score") or 0.0)
+            metadata = self._context_metadata(context)
+            has_signal = bool(
+                str(metadata.get("doc_title") or "").strip()
+                and (
+                    str(metadata.get("article") or "").strip()
+                    or str(metadata.get("citation") or "").strip()
+                )
+            )
+            if score >= relaxed_threshold and has_signal:
+                relaxed.append(context)
+        return relaxed
 
     def answer(
         self,
@@ -216,7 +332,7 @@ class LegalQAPipeline:
     ) -> dict:
         retrieval_result = self.retrieval_pipeline.run(question)
         raw_final_contexts = list(retrieval_result.get("final_contexts") or [])
-        quality = self._context_quality(raw_final_contexts)
+        quality = self._context_quality(question, raw_final_contexts, route=str(retrieval_result.get("route") or ""))
         final_contexts = raw_final_contexts if quality["is_relevant"] else []
         answer_retrieval_result = dict(retrieval_result)
         answer_retrieval_result["final_contexts"] = final_contexts

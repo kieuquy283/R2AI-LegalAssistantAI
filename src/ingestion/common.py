@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
@@ -63,8 +64,23 @@ def normalize_text(text: str) -> str:
     return normalized.strip()
 
 
+def strip_vietnamese_accents(text: str) -> str:
+    text = str(text or "")
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    text = text.replace("đ", "d").replace("Đ", "D")
+    return text
+
+
+def slugify_vi(text: str, max_length: int = 160) -> str:
+    text = strip_vietnamese_accents(text)
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    text = re.sub(r"_+", "_", text).strip("_")
+    if max_length and len(text) > max_length:
+        text = text[:max_length].rstrip("_")
+    return text or "unknown"
+
+
 def stable_slug(text: str) -> str:
-    lowered = (text or "").lower()
-    lowered = re.sub(r"[^0-9a-zA-Z]+", "_", lowered, flags=re.ASCII)
-    lowered = re.sub(r"_+", "_", lowered).strip("_")
-    return lowered or "item"
+    return slugify_vi(text)

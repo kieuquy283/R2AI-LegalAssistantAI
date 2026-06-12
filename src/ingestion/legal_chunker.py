@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from src.ingestion.common import read_jsonl, stable_slug, write_json, write_jsonl
+from src.ingestion.common import read_jsonl, slugify_vi, write_json, write_jsonl
 
 
 DEFAULT_NODES_PATH = Path("data/processed/legal_nodes.jsonl")
@@ -44,7 +44,7 @@ def _build_embedding_text(*parts: object) -> str:
 
 
 def _make_chunk(node: Dict[str, object], document: Dict[str, object], content: str) -> Dict[str, object]:
-    chunk_id = stable_slug(f"{node['node_id']}_{node['level']}")
+    chunk_id = slugify_vi(f"{node['node_id']}_{node['level']}")
     doc_title = str(document.get("doc_title") or node.get("doc_id"))
     article = node.get("article")
     clause = node.get("clause")
@@ -83,7 +83,7 @@ def _make_chunk(node: Dict[str, object], document: Dict[str, object], content: s
 def _build_context_chunk(article_node: Dict[str, object], document: Dict[str, object], child_chunk_ids: List[str]) -> Dict[str, object]:
     doc_title = str(document.get("doc_title") or article_node.get("doc_id"))
     article = article_node.get("article")
-    context_chunk_id = stable_slug(f"{article_node['node_id']}_context")
+    context_chunk_id = slugify_vi(f"{article_node['node_id']}_context")
     return {
         "context_chunk_id": context_chunk_id,
         "doc_id": article_node["doc_id"],

@@ -12,12 +12,12 @@ from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import SentenceTransformer
 
-from rag.config.retrieval import DEFAULT_INDEX_DIR, EMBEDDING_BACKEND, LOCAL_EMBEDDING_MODEL
+from rag.config.retrieval import DEFAULT_INDEX_DIR, EMBEDDING_BACKEND as DEFAULT_EMBEDDING_BACKEND, LOCAL_EMBEDDING_MODEL
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
-_EMBEDDINGS_CACHE: Embeddings | None = None
+_EMBEDDINGS_CACHE: dict[str, Embeddings] = {}
 
 
 class LocalSentenceTransformerEmbeddings(Embeddings):
@@ -77,22 +77,27 @@ class OfflineHashEmbeddings(Embeddings):
 
 
 def get_embeddings() -> Embeddings:
-    global _EMBEDDINGS_CACHE
-    if _EMBEDDINGS_CACHE is not None:
-        return _EMBEDDINGS_CACHE
+    backend = os.getenv("EMBEDDING_BACKEND", DEFAULT_EMBEDDING_BACKEND).strip().lower()
+    cached = _EMBEDDINGS_CACHE.get(backend)
+    if cached is not None:
+        return cached
 
-    if EMBEDDING_BACKEND == "local":
+    if backend in {"hash", "offline_hash"}:
+        _EMBEDDINGS_CACHE[backend] = OfflineHashEmbeddings()
+        return _EMBEDDINGS_CACHE[backend]
+
+    if backend == "local":
         try:
-            _EMBEDDINGS_CACHE = LocalSentenceTransformerEmbeddings(LOCAL_EMBEDDING_MODEL)
+            _EMBEDDINGS_CACHE[backend] = LocalSentenceTransformerEmbeddings(LOCAL_EMBEDDING_MODEL)
         except Exception as exc:
             warnings.warn(
                 f"Falling back to offline hash embeddings because '{LOCAL_EMBEDDING_MODEL}' could not be loaded: {exc}",
                 RuntimeWarning,
             )
-            _EMBEDDINGS_CACHE = OfflineHashEmbeddings()
-        return _EMBEDDINGS_CACHE
+            _EMBEDDINGS_CACHE[backend] = OfflineHashEmbeddings()
+        return _EMBEDDINGS_CACHE[backend]
 
-    raise ValueError("Chi ho tro EMBEDDING_BACKEND=local")
+    raise ValueError("Chi ho tro EMBEDDING_BACKEND=local hoac hash")
 
 
 def ensure_index_dir(index_dir: str | Path = DEFAULT_INDEX_DIR) -> None:

@@ -31,6 +31,24 @@ class FAISSRetriever(BaseRetriever):
         self.filter_active = filter_active
         self.enable_multi_query = enable_multi_query
 
+    def _dense_score_mode(self) -> str:
+        """
+        LangChain FAISS often returns distance-like scores where lower is better.
+        LangChain/Qdrant with cosine returns similarity-like scores where higher is better.
+        """
+        vectorstore_type = type(self.vectorstore).__name__.lower()
+        vectorstore_module = type(self.vectorstore).__module__.lower()
+        combined = f"{vectorstore_module}.{vectorstore_type}"
+
+        if "qdrant" in combined:
+            return "similarity"
+
+        if "faiss" in combined:
+            return "distance"
+
+        # Safe default for most cosine vectorstores.
+        return "similarity"
+
     def _search(self, query: str, candidate_k: int) -> List[RetrievalResult]:
         docs_scores = self.vectorstore.similarity_search_with_score(query=query, k=candidate_k)
         results: List[RetrievalResult] = []
@@ -42,21 +60,27 @@ class FAISSRetriever(BaseRetriever):
                 continue
 
             chunk_id = str(metadata.get("chunk_id", rank))
+            raw_score = float(raw_score)
+
             result = RetrievalResult(
                 chunk_id=chunk_id,
                 text=text,
-                score=float(raw_score),
+                score=raw_score,
                 source="dense",
                 metadata=metadata,
                 retrieval_rank=rank,
-                raw_score=float(raw_score),
-                retriever_name="faiss",
+                raw_score=raw_score,
+                dense_score=raw_score,
+                retriever_name=type(self.vectorstore).__name__,
                 sources=["dense"],
             )
             result.metadata["retrieval_sources"] = ["dense"]
+            result.metadata["raw_dense_score"] = raw_score
+            result.metadata["vectorstore_type"] = type(self.vectorstore).__name__
+            result.metadata["vectorstore_module"] = type(self.vectorstore).__module__
             results.append(result)
 
-        return normalize_dense_scores(results)
+        return normalize_dense_scores(results, score_mode=self._dense_score_mode())
 
     def retrieve(
         self,

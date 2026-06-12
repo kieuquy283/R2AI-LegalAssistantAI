@@ -132,14 +132,40 @@ TOPIC_RULES = [
     },
     {
         "name": "ip",
-        "keywords": ["so huu tri tue", "quyen tac gia", "ban quyen", "nhan hieu", "kieu dang cong nghiep"],
-        "required_phrases": ["so huu tri tue", "quyen tac gia", "ban quyen", "nhan hieu", "65/2023"],
-        "title_phrases": [
+        "keywords": [
             "so huu tri tue",
+            "so huu cong nghiep",
             "quyen tac gia",
             "ban quyen",
             "nhan hieu",
+            "kieu dang cong nghiep",
+            "van bang bao ho",
+            "tham dinh noi dung",
+            "chuyen nhuong quyen so huu cong nghiep",
+        ],
+        "required_phrases": [
+            "so huu tri tue",
+            "so huu cong nghiep",
+            "quyen tac gia",
+            "ban quyen",
+            "nhan hieu",
+            "van bang bao ho",
+            "tham dinh noi dung",
+            "chuyen nhuong quyen so huu cong nghiep",
             "65/2023",
+            "23/2023",
+        ],
+        "title_phrases": [
+            "so huu tri tue",
+            "so huu cong nghiep",
+            "quyen tac gia",
+            "ban quyen",
+            "nhan hieu",
+            "van bang bao ho",
+            "tham dinh noi dung",
+            "chuyen nhuong quyen so huu cong nghiep",
+            "65/2023",
+            "23/2023",
         ],
         "preferred_domains": ["business_law", "investment_law"],
         "missing_penalty": 0.4,
@@ -187,6 +213,41 @@ PHRASE_GUARDS = [
     "dau thau",
     "bao hiem xa hoi",
 ]
+
+GENERIC_TITLE_PENALTIES = {
+    "dnnvv": ["thu tuc hanh chinh", "thanh lap doanh nghiep", "ho kinh doanh", "giai the doanh nghiep"],
+    "dnnvv_procurement": ["thu tuc hanh chinh", "thanh lap doanh nghiep", "ho kinh doanh", "bao lanh", "vay von"],
+    "tax_procedure": ["giai the doanh nghiep", "quan ly tai chinh tam thoi", "dau thau", "quan ly nha nuoc ve hai quan"],
+    "tax_invoice": ["hoan thue", "giai the doanh nghiep", "quan ly tai chinh tam thoi", "thue tncn", "thue gtgt"],
+    "invoice_signature": ["hoan thue", "thue tncn", "thue gtgt", "xuat khau", "nhap khau"],
+    "labor_social": ["muc luong toi thieu", "thoi gio lam viec", "nghi ngoi doi voi lao dong thoi vu", "nguoi lao dong viet nam di lam viec o nuoc ngoai"],
+    "social_insurance_penalty": ["hop dong lao dong", "muc luong toi thieu", "thoi gio lam viec", "bao hiem that nghiep"],
+    "ip": [
+        "dau tu von nha nuoc",
+        "quy phat trien doanh nghiep nho va vua",
+        "tuan thu phap luat hai quan",
+        "chung chi kiem toan vien",
+        "ke toan vien",
+        "muc luong toi thieu",
+        "thi hanh an dan su",
+        "luat hoa chat",
+    ],
+    "copyright_registration": ["dau tu von nha nuoc", "quy phat trien doanh nghiep nho va vua", "so huu cong nghiep"],
+}
+
+SOURCE_CATEGORY_BOOSTS = {
+    "tax_procedure": ["/thue/", "/ke-toan/"],
+    "tax_invoice": ["/thue/", "/ke-toan/"],
+    "invoice_signature": ["/thue/", "/ke-toan/"],
+    "labor_social": ["/lao-dong/", "/bao-hiem/"],
+    "social_insurance_penalty": ["/bao-hiem/", "/lao-dong/"],
+    "ip": ["/so-huu-tri-tue/", "/cong-nghiep/"],
+    "copyright_registration": ["/so-huu-tri-tue/"],
+    "procurement_trade": ["/dau-thau/", "/thuong-mai/"],
+    "dnnvv_procurement": ["/doanh-nghiep/", "/dau-thau/"],
+    "customs_logistics": ["/xuat-nhap-khau/", "/hai-quan/"],
+    "dnnvv": ["/doanh-nghiep/"],
+}
 
 
 def _normalize_plain(text: str) -> str:
@@ -431,6 +492,32 @@ class HybridRetriever:
                 matches.append(rule)
         return matches
 
+    def _topic_profile(self, query: str) -> str | None:
+        normalized_query = _normalize_plain(query)
+        if "doanh nghiep nho va vua" in normalized_query and "dau thau" in normalized_query:
+            return "dnnvv_procurement"
+        if "bao hiem xa hoi" in normalized_query and any(token in normalized_query for token in ["cham dong", "xu phat", "bi phat", "che tai"]):
+            return "social_insurance_penalty"
+        if "thue" in normalized_query and any(token in normalized_query for token in ["dang ky", "khai", "nop", "mien", "giam", "no thue", "cuong che", "nop thua", "khau tru"]):
+            return "tax_procedure"
+        if "hoa don" in normalized_query and any(token in normalized_query for token in ["chu ky so", "ma co quan thue", "dien tu"]):
+            return "invoice_signature"
+        if any(token in normalized_query for token in ["quyen tac gia", "ho so dang ky", "dang ky quyen tac gia"]):
+            return "copyright_registration"
+        if any(token in normalized_query for token in ["doanh nghiep nho va vua", "dnnvv", "uom tao", "khu lam viec chung"]):
+            return "dnnvv"
+        if any(token in normalized_query for token in ["hoa don", "co quan thue", "ma so thue", "ke toan", "chung tu"]):
+            return "tax_invoice"
+        if any(token in normalized_query for token in ["so huu tri tue", "so huu cong nghiep", "quyen tac gia", "nhan hieu", "ten thuong mai", "van bang bao ho", "tham dinh noi dung"]):
+            return "ip"
+        if any(token in normalized_query for token in ["bao hiem xa hoi", "bhxh", "nguoi lao dong", "nhan vien", "giu ban chinh"]):
+            return "labor_social"
+        if any(token in normalized_query for token in ["dau thau", "thuong mai", "nhuong quyen"]):
+            return "procurement_trade"
+        if any(token in normalized_query for token in ["hai quan", "logistics", "xuat nhap khau", "thong quan"]):
+            return "customs_logistics"
+        return None
+
     def _score_context(self, query: str, chunk: Dict[str, object], base_score: float, *, preferred_domains: Sequence[str] | None = None) -> Dict[str, float]:
         normalized_query = _normalize_plain(query)
         query_tokens = set(tokenize_for_bm25(query))
@@ -446,6 +533,8 @@ class HybridRetriever:
         text_tokens = set(tokenize_for_bm25(combined_text))
         title_tokens = set(tokenize_for_bm25(title_text))
         query_size = max(len(query_tokens), 1)
+        topic_profile = self._topic_profile(query)
+        source_url = _normalize_plain(str(chunk.get("source_url") or ""))
 
         lexical_overlap = len(query_tokens & text_tokens) / query_size if query_tokens else 0.0
         title_match = len(query_tokens & title_tokens) / query_size if query_tokens else 0.0
@@ -480,16 +569,60 @@ class HybridRetriever:
                 topic_boost += min(0.12, 0.03 * len(keyword_hits))
             if required_hits:
                 topic_boost += min(0.18, 0.04 * len(required_hits))
+            if not required_hits and not title_phrases:
+                topic_boost -= max(0.75, float(rule.get("missing_penalty", 0.0)))
+
+        if topic_profile:
+            source_hints = SOURCE_CATEGORY_BOOSTS.get(topic_profile, [])
+            if source_hints and any(token in source_url for token in source_hints):
+                topic_boost += 0.18
+            generic_penalties = GENERIC_TITLE_PENALTIES.get(topic_profile, [])
+            generic_hits = [token for token in generic_penalties if token in normalized_title]
+            if generic_hits:
+                topic_boost -= 0.85 + 0.15 * len(generic_hits)
+
+        if topic_profile == "tax_procedure" and all(token not in normalized_text for token in ["thue", "dang ky thue", "khai thue", "nop thue", "mien thue", "giam thue", "xoa tien thue no", "thuong mai dien tu"]):
+            topic_boost -= 1.0
+        if topic_profile == "tax_invoice" and "hoa don" not in normalized_text and "quan ly thue" not in normalized_text:
+            topic_boost -= 0.9
+        if topic_profile == "invoice_signature" and all(token not in normalized_text for token in ["hoa don", "dien tu", "chu ky so", "ma co quan thue", "119/2018", "68/2019", "123/2020"]):
+            topic_boost -= 1.15
+        if topic_profile == "labor_social" and all(token not in normalized_text for token in ["lao dong", "bao hiem xa hoi", "bo luat lao dong", "12/2022"]):
+            topic_boost -= 0.85
+        if topic_profile == "social_insurance_penalty" and all(token not in normalized_text for token in ["bao hiem xa hoi", "bhxh", "xu phat", "cham dong", "lao dong", "216", "38/2022"]):
+            topic_boost -= 1.1
+        if topic_profile == "ip" and all(token not in normalized_text for token in ["so huu tri tue", "quyen tac gia", "nhan hieu", "ten thuong mai", "65/2023"]):
+            topic_boost -= 0.95
+        if topic_profile == "copyright_registration" and all(token not in normalized_text for token in ["quyen tac gia", "ho so dang ky", "giay cam doan", "to khai", "ban sao tac pham", "50/2005"]):
+            topic_boost -= 1.05
+        if topic_profile == "dnnvv" and all(token not in normalized_text for token in ["doanh nghiep nho va vua", "uom tao", "khu lam viec chung", "80/2021", "39/2019"]):
+            topic_boost -= 1.0
+        if topic_profile == "dnnvv_procurement" and all(token not in normalized_text for token in ["doanh nghiep nho va vua", "dau thau", "80/2021", "uu dai"]):
+            topic_boost -= 1.1
+
+        if topic_profile == "dnnvv_procurement" and "thu tuc hanh chinh" in normalized_title:
+            topic_boost -= 1.2
+        if topic_profile == "tax_procedure" and all(token not in normalized_title for token in ["thue", "quan ly thue", "dang ky thue", "khai thue", "cuong che", "thuong mai dien tu"]):
+            topic_boost -= 0.55
+        if topic_profile == "invoice_signature" and all(token not in normalized_title for token in ["hoa don", "dien tu", "quan ly thue", "123/2020", "119/2018", "68/2019"]):
+            topic_boost -= 0.65
+        if topic_profile == "social_insurance_penalty" and "bao hiem xa hoi" not in normalized_title and "xu phat" not in normalized_title:
+            topic_boost -= 0.55
+        if topic_profile == "copyright_registration" and all(token not in normalized_title for token in ["quyen tac gia", "so huu tri tue", "ban quyen"]):
+            topic_boost -= 0.6
 
         if matched_rules and domain_match == 0.0 and lexical_overlap < 0.12 and title_match < 0.12:
             topic_boost -= 0.12
         if matched_rules and domain_value == "banking_law" and topic_boost < 0.0:
             topic_boost -= 0.05
 
+        lexical_overlap = min(1.0, lexical_overlap)
+        title_match = min(1.0, title_match)
+
         final_score = (
             float(base_score) * 0.18
             + lexical_overlap * 0.22
-            + title_match * 0.22
+            + title_match * 0.18
             + citation_match * 0.06
             + domain_match * 0.14
             + topic_boost
