@@ -17,11 +17,11 @@ class HybridReranker:
     def __init__(
         self,
         *,
-        heuristic_top_k: int = 50,
+        heuristic_top_k: int = 30,
         max_contexts: int = 5,
         cross_encoder_model: str = "BAAI/bge-reranker-v2-m3",
-        batch_size: int = 8,
-        max_length: int = 512,
+        batch_size: int = 16,
+        max_length: int = 256,
         heuristic_weight: float = 0.3,
         cross_weight: float = 0.7,
         enable_cross_encoder: bool | None = None,
@@ -30,8 +30,8 @@ class HybridReranker:
         self.heuristic_top_k = int(os.getenv("HYBRID_RERANKER_HEURISTIC_TOP_K", heuristic_top_k))
         self.max_contexts = int(max_contexts)
         self.cross_encoder_model = str(os.getenv("HYBRID_RERANKER_MODEL", cross_encoder_model))
-        self.batch_size = int(batch_size)
-        self.max_length = int(max_length)
+        self.batch_size = int(os.getenv("HYBRID_RERANKER_BATCH_SIZE", batch_size))
+        self.max_length = int(os.getenv("HYBRID_RERANKER_MAX_LENGTH", max_length))
         self.heuristic_weight = float(heuristic_weight)
         self.cross_weight = float(os.getenv("HYBRID_RERANKER_CROSS_WEIGHT", cross_weight))
         self._cross_encoder: Any | None = None
