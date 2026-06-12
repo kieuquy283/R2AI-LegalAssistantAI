@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import time
 from collections import Counter
@@ -12,10 +13,12 @@ from functools import partial
 from pathlib import Path
 from typing import Dict, List
 
+from src.evaluation.output_formatter import extract_legal_doc_code, format_article_ref, format_doc_ref, format_submission_record
 from src.evaluation.eval_logger import EvalLogger
 from src.qa_pipeline import LegalQAPipeline
 
 LOGGER = logging.getLogger(__name__)
+LEGAL_CODE_PATTERN = re.compile(r"\b\d+(?:/\d+)+/[A-Z0-9ĂÂĐÊÔƠƯ\-]+(?:[A-Z0-9ĂÂĐÊÔƠƯ\-]+)?\b", re.IGNORECASE)
 
 
 def _coerce_int_like(value: object) -> int | None:
@@ -110,29 +113,40 @@ def _normalize_submission_id(row: Dict[str, object], fallback_id: int) -> int:
     return fallback_id
 
 
-def _build_relevant_docs(result: Dict[str, object]) -> List[Dict[str, object]]:
-    records: List[Dict[str, object]] = []
-    seen: set[tuple[str, str]] = set()
+def _extract_legal_doc_code(*values: object) -> str:
+    return extract_legal_doc_code(*values)
+
+
+def _format_doc_reference(doc_id: str, doc_title: str, citation: str = "") -> str:
+    return format_doc_ref({"doc_id": doc_id, "doc_title": doc_title, "citation": citation})
+
+
+def _format_article_reference(doc_id: str, doc_title: str, article: str, citation: str = "") -> str:
+    return format_article_ref({"doc_id": doc_id, "doc_title": doc_title, "article": article, "citation": citation})
+
+
+def _context_metadata(context: Dict[str, object]) -> Dict[str, object]:
+    merged = dict(context)
+    nested = dict(context.get("metadata") or {})
+    merged.update({key: value for key, value in nested.items() if value not in (None, "", [])})
+    return merged
+
+
+def _build_relevant_docs(result: Dict[str, object]) -> List[str]:
+    records: List[str] = []
+    seen: set[str] = set()
 
     for item in list(result.get("relevant_doc_details") or []):
         if not isinstance(item, dict):
             continue
+        doc_id = str(item.get("doc_id") or "").strip()
         doc_title = str(item.get("doc_title") or "").strip()
-        source_url = str(item.get("source_url") or "").strip()
-        citation = str(item.get("citation") or doc_title).strip()
-        key = (doc_title, source_url)
-        if key in seen:
+        citation = str(item.get("citation") or "").strip()
+        ref = _format_doc_reference(doc_id, doc_title, citation)
+        if not ref or ref in seen:
             continue
-        if not doc_title and not source_url and not citation:
-            continue
-        seen.add(key)
-        records.append(
-            {
-                "doc_title": doc_title,
-                "source_url": source_url,
-                "citation": citation,
-            }
-        )
+        seen.add(ref)
+        records.append(ref)
 
     if records:
         return records
@@ -140,22 +154,14 @@ def _build_relevant_docs(result: Dict[str, object]) -> List[Dict[str, object]]:
     for item in list(result.get("citations") or []):
         if not isinstance(item, dict):
             continue
+        doc_id = str(item.get("doc_id") or "").strip()
         doc_title = str(item.get("doc_title") or "").strip()
-        source_url = str(item.get("source_url") or "").strip()
-        citation = str(item.get("citation") or doc_title).strip()
-        key = (doc_title, source_url)
-        if key in seen:
+        citation = str(item.get("citation") or "").strip()
+        ref = _format_doc_reference(doc_id, doc_title, citation)
+        if not ref or ref in seen:
             continue
-        if not doc_title and not source_url and not citation:
-            continue
-        seen.add(key)
-        records.append(
-            {
-                "doc_title": doc_title,
-                "source_url": source_url,
-                "citation": citation,
-            }
-        )
+        seen.add(ref)
+        records.append(ref)
 
     if records:
         return records
@@ -163,55 +169,35 @@ def _build_relevant_docs(result: Dict[str, object]) -> List[Dict[str, object]]:
     for context in list(result.get("final_contexts") or []):
         if not isinstance(context, dict):
             continue
-        metadata = dict(context.get("metadata") or {})
+        metadata = _context_metadata(context)
+        doc_id = str(metadata.get("doc_id") or "").strip()
         doc_title = str(metadata.get("doc_title") or metadata.get("doc_id") or "").strip()
-        source_url = str(metadata.get("source_url") or "").strip()
-        citation = str(metadata.get("citation") or doc_title).strip()
-        key = (doc_title, source_url)
-        if key in seen:
+        citation = str(metadata.get("citation") or "").strip()
+        ref = _format_doc_reference(doc_id, doc_title, citation)
+        if not ref or ref in seen:
             continue
-        if not doc_title and not source_url and not citation:
-            continue
-        seen.add(key)
-        records.append(
-            {
-                "doc_title": doc_title,
-                "source_url": source_url,
-                "citation": citation,
-            }
-        )
+        seen.add(ref)
+        records.append(ref)
 
     return records
 
 
-def _build_relevant_articles(result: Dict[str, object]) -> List[Dict[str, object]]:
-    records: List[Dict[str, object]] = []
-    seen: set[tuple[str, str, str, str, str]] = set()
+def _build_relevant_articles(result: Dict[str, object]) -> List[str]:
+    records: List[str] = []
+    seen: set[str] = set()
 
     for item in list(result.get("relevant_article_details") or []):
         if not isinstance(item, dict):
             continue
+        doc_id = str(item.get("doc_id") or "").strip()
         doc_title = str(item.get("doc_title") or "").strip()
         article = str(item.get("article") or "").strip()
-        clause_value = item.get("clause")
-        clause = "" if clause_value in (None, "") else str(clause_value).strip()
-        citation = str(item.get("citation") or doc_title).strip()
-        source_url = str(item.get("source_url") or "").strip()
-        key = (doc_title, article, clause, citation, source_url)
-        if key in seen:
+        citation = str(item.get("citation") or "").strip()
+        ref = _format_article_reference(doc_id, doc_title, article, citation)
+        if not ref or ref in seen:
             continue
-        if not doc_title and not article and not clause and not citation and not source_url:
-            continue
-        seen.add(key)
-        records.append(
-            {
-                "doc_title": doc_title,
-                "article": article,
-                "clause": clause if clause else None,
-                "citation": citation,
-                "source_url": source_url,
-            }
-        )
+        seen.add(ref)
+        records.append(ref)
 
     if records:
         return records
@@ -219,27 +205,15 @@ def _build_relevant_articles(result: Dict[str, object]) -> List[Dict[str, object
     for item in list(result.get("citations") or []):
         if not isinstance(item, dict):
             continue
+        doc_id = str(item.get("doc_id") or "").strip()
         doc_title = str(item.get("doc_title") or "").strip()
         article = str(item.get("article") or "").strip()
-        clause_value = item.get("clause")
-        clause = "" if clause_value in (None, "") else str(clause_value).strip()
-        citation = str(item.get("citation") or doc_title).strip()
-        source_url = str(item.get("source_url") or "").strip()
-        key = (doc_title, article, clause, citation, source_url)
-        if key in seen:
+        citation = str(item.get("citation") or "").strip()
+        ref = _format_article_reference(doc_id, doc_title, article, citation)
+        if not ref or ref in seen:
             continue
-        if not doc_title and not article and not clause and not citation and not source_url:
-            continue
-        seen.add(key)
-        records.append(
-            {
-                "doc_title": doc_title,
-                "article": article,
-                "clause": clause if clause else None,
-                "citation": citation,
-                "source_url": source_url,
-            }
-        )
+        seen.add(ref)
+        records.append(ref)
 
     if records:
         return records
@@ -247,28 +221,16 @@ def _build_relevant_articles(result: Dict[str, object]) -> List[Dict[str, object
     for context in list(result.get("final_contexts") or []):
         if not isinstance(context, dict):
             continue
-        metadata = dict(context.get("metadata") or {})
+        metadata = _context_metadata(context)
+        doc_id = str(metadata.get("doc_id") or "").strip()
         doc_title = str(metadata.get("doc_title") or metadata.get("doc_id") or "").strip()
         article = str(metadata.get("article") or "").strip()
-        clause_value = metadata.get("clause")
-        clause = "" if clause_value in (None, "") else str(clause_value).strip()
-        citation = str(metadata.get("citation") or doc_title).strip()
-        source_url = str(metadata.get("source_url") or "").strip()
-        key = (doc_title, article, clause, citation, source_url)
-        if key in seen:
+        citation = str(metadata.get("citation") or "").strip()
+        ref = _format_article_reference(doc_id, doc_title, article, citation)
+        if not ref or ref in seen:
             continue
-        if not doc_title and not article and not clause and not citation and not source_url:
-            continue
-        seen.add(key)
-        records.append(
-            {
-                "doc_title": doc_title,
-                "article": article,
-                "clause": clause if clause else None,
-                "citation": citation,
-                "source_url": source_url,
-            }
-        )
+        seen.add(ref)
+        records.append(ref)
 
     return records
 
@@ -279,9 +241,15 @@ def _evaluate_row(qa: LegalQAPipeline, row: Dict[str, object], index: int) -> Di
     if not question:
         raise ValueError(f"Question row {question_id} is missing question text.")
 
+    print(f"[{index}] Q{question_id}: {question[:80]}...")
+    sys.stdout.flush()
     started = time.perf_counter()
     result = qa.answer(question)
     latency = time.perf_counter() - started
+    contexts = len(result.get("final_contexts") or [])
+    route = result.get("route", "?")
+    print(f"[{index}] Done in {latency:.2f}s | route={route} | contexts={contexts} | answer={len(str(result.get('answer') or ''))} chars")
+    sys.stdout.flush()
 
     return {
         "id": question_id,
@@ -297,6 +265,20 @@ def _evaluate_row_payload(qa: LegalQAPipeline, payload: tuple[int, Dict[str, obj
     return _evaluate_row(qa, row, index)
 
 
+def _progress_interval(total_questions: int) -> int:
+    configured = os.getenv("R2AI_EVAL_PROGRESS_EVERY", "").strip()
+    if configured:
+        try:
+            return max(1, int(configured))
+        except ValueError:
+            pass
+    if total_questions >= 1000:
+        return 25
+    if total_questions >= 200:
+        return 10
+    return 5
+
+
 def evaluate_questions(
     questions: List[Dict[str, object]],
     *,
@@ -308,6 +290,11 @@ def evaluate_questions(
     export_path = output_path if output_path is not None else answers_output_path
     logger = EvalLogger(run_id=run_id)
     qa = LegalQAPipeline()
+    trace_path_value = os.getenv("R2AI_RETRIEVAL_TRACE_PATH", "").strip()
+    trace_path = Path(trace_path_value) if trace_path_value else None
+    if trace_path:
+        trace_path.parent.mkdir(parents=True, exist_ok=True)
+        trace_path.write_text("", encoding="utf-8")
     route_distribution: Counter[str] = Counter()
     answer_non_empty = 0
     citation_present = 0
@@ -318,14 +305,30 @@ def evaluate_questions(
     answer_records: List[Dict[str, object]] = []
 
     selected_questions = _slice_questions(questions, limit)
+    total_questions = len(selected_questions)
+    progress_every = _progress_interval(total_questions)
+    run_started = time.perf_counter()
     worker_count = max(1, min(int(os.getenv("R2AI_EVAL_WORKERS", "1")), len(selected_questions) or 1))
+    print(f"\n{'='*60}")
+    print(f"EVAL START: run_id={run_id} total_questions={total_questions}")
+    print(f"output={export_path or ''} workers={worker_count}")
+    print(f"{'='*60}\n")
+    sys.stdout.flush()
+    logger.log_progress(
+        f"START run_id={run_id} total_questions={total_questions} output={export_path or ''} workers={worker_count}",
+        run_id=run_id,
+        total_questions=total_questions,
+        output_path=str(export_path or ""),
+        workers=worker_count,
+        progress_every=progress_every,
+    )
     if worker_count == 1:
         evaluated_rows = [_evaluate_row(qa, row, index) for index, row in enumerate(selected_questions, start=1)]
     else:
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             evaluated_rows = list(executor.map(partial(_evaluate_row_payload, qa), enumerate(selected_questions, start=1)))
 
-    for item in evaluated_rows:
+    for processed_count, item in enumerate(evaluated_rows, start=1):
         row = item["row"]
         result = item["result"]
         question_id = item["id"]
@@ -358,13 +361,15 @@ def evaluate_questions(
             LOGGER.warning("Could not derive structured references for question_id=%s", question_id)
 
         answer_records.append(
-            {
-                "id": question_id,
-                "question": question,
-                "answer": answer_text,
-                "relevant_docs": relevant_docs,
-                "relevant_articles": relevant_articles,
-            }
+            format_submission_record(
+                {
+                    "id": question_id,
+                    "question": question,
+                    "answer": answer_text,
+                    "relevant_docs": relevant_docs,
+                    "relevant_articles": relevant_articles,
+                }
+            )
         )
 
         logger.log(
@@ -385,8 +390,83 @@ def evaluate_questions(
                 "latency_seconds": latency,
             }
         )
+        if trace_path is not None:
+            top_candidates = []
+            for context in list(result.get("raw_final_contexts") or result.get("expanded_contexts") or [])[:10]:
+                metadata = _context_metadata(context)
+                top_candidates.append(
+                    {
+                        "retrieval_level": context.get("retrieval_level"),
+                        "retrieval_source": context.get("retrieval_source", ""),
+                        "doc_number": metadata.get("doc_number"),
+                        "doc_title": metadata.get("doc_title"),
+                        "article": metadata.get("article"),
+                        "citation": metadata.get("citation"),
+                        "domain": metadata.get("domain"),
+                        "raw_dense_score": context.get("raw_dense_score", 0.0),
+                        "dense_score": context.get("dense_score", 0.0),
+                        "score": context.get("score", context.get("raw_dense_score", 0.0)),
+                        "bm25_score": context.get("bm25_score", 0.0),
+                        "title_overlap": context.get("title_overlap", 0.0),
+                        "lexical_overlap": context.get("lexical_overlap", 0.0),
+                        "final_score": context.get("final_score", context.get("score", 0.0)),
+                        "confidence": context.get("confidence", 0.0),
+                        "qdrant_mode": context.get("qdrant_mode", ""),
+                        "domain_rerank_enabled": context.get("domain_rerank_enabled", False),
+                        "domain_rerank_mode": context.get("domain_rerank_mode", ""),
+                        "detected_query_domain": context.get("detected_query_domain"),
+                        "detected_domains": context.get("detected_domains"),
+                        "primary_domain": context.get("primary_domain"),
+                        "is_multi_domain": context.get("is_multi_domain", False),
+                        "domain_confidence": context.get("domain_confidence"),
+                        "matched_domain_keywords": context.get("matched_domain_keywords"),
+                        "candidate_domain": context.get("candidate_domain"),
+                        "score_before_domain_adjustment": context.get("score_before_domain_adjustment", 0.0),
+                        "score_after_domain_adjustment": context.get("score_after_domain_adjustment", 0.0),
+                        "domain_adjustment_reason": context.get("domain_adjustment_reason", ""),
+                    }
+                )
+            trace_row = {
+                "question_id": question_id,
+                "question": question,
+                "route": result.get("route"),
+                "domain_prediction": {"domains": result.get("domains")},
+                "candidate_count": len(result.get("expanded_contexts") or []),
+                "selected_context_count": len(result.get("final_contexts") or []),
+                "selected_docs": relevant_docs,
+                "selected_articles": relevant_articles,
+                "qdrant_path": os.getenv("QDRANT_PATH", ""),
+                "qdrant_mode": top_candidates[0].get("qdrant_mode", "") if top_candidates else "",
+                "top_candidates": top_candidates,
+            }
+            with trace_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(trace_row, ensure_ascii=False) + "\n")
 
-    total_questions = len(selected_questions)
+        if processed_count % progress_every == 0 or processed_count == total_questions:
+            elapsed = time.perf_counter() - run_started
+            avg_latency = elapsed / processed_count if processed_count else 0.0
+            remaining = max(total_questions - processed_count, 0)
+            eta_seconds = remaining * avg_latency
+            message = (
+                f"[PROGRESS] {processed_count}/{total_questions} "
+                f"({processed_count / total_questions:.1%}) "
+                f"avg={avg_latency:.2f}s/question eta={eta_seconds / 60:.1f}m"
+            )
+            print(f"\n{'-'*60}")
+            print(message)
+            print(f"{'-'*60}\n")
+            sys.stdout.flush()
+            logger.log_progress(
+                message,
+                run_id=run_id,
+                processed=processed_count,
+                total_questions=total_questions,
+                percent_complete=round(processed_count / total_questions, 4),
+                avg_latency_seconds=round(avg_latency, 4),
+                eta_seconds=round(eta_seconds, 2),
+                last_question_id=question_id,
+            )
+
     summary = {
         "total_questions": total_questions,
         "citation_present_rate": citation_present / total_questions if total_questions else 0.0,
@@ -399,6 +479,23 @@ def evaluate_questions(
     summary_path = Path("logs/eval_runs") / f"{run_id}_summary.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    total_elapsed = time.perf_counter() - run_started
+    print(f"\n{'='*60}")
+    print(f"EVAL DONE: run_id={run_id}")
+    print(f"total_questions={total_questions} elapsed={total_elapsed / 60:.1f}m")
+    print(f"avg_latency={summary['avg_latency_seconds']:.2f}s")
+    print(f"summary_path={summary_path}")
+    print(f"output_path={export_path or ''}")
+    print(f"{'='*60}\n")
+    sys.stdout.flush()
+    logger.log_progress(
+        f"DONE run_id={run_id} total_questions={total_questions} elapsed={total_elapsed / 60:.1f}m",
+        run_id=run_id,
+        total_questions=total_questions,
+        elapsed_seconds=round(total_elapsed, 2),
+        summary_path=str(summary_path),
+        output_path=str(export_path or ""),
+    )
 
     if export_path is not None:
         output_file = Path(export_path)

@@ -5,19 +5,40 @@ import json
 import os
 from typing import Dict
 
+from rag.config.runtime import get_retrieval_runtime_config
+from src.retrieval.bm25_retriever import BM25Retriever
 from src.retrieval.confidence_checker import ConfidenceChecker
 from src.retrieval.context_expander import ContextExpander
+from src.retrieval.hybrid_fusion import fuse_candidates, select_dynamic_contexts
 from src.retrieval.hybrid_retriever import HybridRetriever
+from src.retrieval.legal_exact_search import LegalExactSearch
+from src.retrieval.qdrant_retriever import QdrantRetriever, apply_domain_adjustment
 from src.retrieval.query_router import route_query
 from src.retrieval.reranker import Reranker
+from src.retrieval.hybrid_reranker import HybridReranker
 
 
 class RetrievalPipeline:
     def __init__(self) -> None:
-        self.retriever = HybridRetriever()
-        self.expander = ContextExpander(retriever=self.retriever)
-        self.reranker = Reranker()
-        self.confidence_checker = ConfidenceChecker()
+        self.runtime_config = get_retrieval_runtime_config()
+        self.backend = str(self.runtime_config.retrieval_backend or "faiss").strip().lower()
+        self.retriever = None
+        self.expander = None
+        self.reranker = None
+        self.confidence_checker = None
+        self.qdrant_retriever = None
+        self.bm25_retriever = None
+        self.exact_search = None
+        self._use_hybrid_reranker = os.getenv("HYBRID_RERANKER", "").strip().lower() in {"1", "true", "yes"}
+        if self.backend == "qdrant":
+            self.qdrant_retriever = QdrantRetriever(config=self.runtime_config)
+            self.bm25_retriever = BM25Retriever()
+            self.exact_search = LegalExactSearch()
+        else:
+            self.retriever = HybridRetriever()
+            self.expander = ContextExpander(retriever=self.retriever)
+            self.reranker = HybridReranker() if self._use_hybrid_reranker else Reranker()
+            self.confidence_checker = ConfidenceChecker()
 
     def _route_result_for(self, route: str, domains: list[str], reason: str) -> Dict[str, object]:
         needs_parent = route in {"PARENT_CONTEXT", "LEGAL_GRAPH_CONTEXT", "CROSS_DOMAIN_CONTEXT", "MULTI_DOMAIN_COMPLEX"}
@@ -35,6 +56,8 @@ class RetrievalPipeline:
         }
 
     def run(self, query: str) -> Dict[str, object]:
+        if self.backend == "qdrant":
+            return self._run_qdrant(query)
         seed_top_k = max(1, int(os.getenv("R2AI_RETRIEVAL_TOP_K", "5")))
         max_contexts_override = os.getenv("R2AI_RETRIEVAL_MAX_CONTEXTS")
         skip_expansion = os.getenv("R2AI_RETRIEVAL_SKIP_EXPANSION", "").strip().lower() in {"1", "true", "yes"}
@@ -67,9 +90,6 @@ class RetrievalPipeline:
             except ValueError:
                 pass
         final_contexts = list(expanded_contexts) if skip_rerank else self.reranker.rerank(query, expanded_contexts, max_contexts=max_contexts)
-        if not final_contexts:
-            fallback_contexts = list(expanded_contexts or seed_chunks)
-            final_contexts = fallback_contexts[:max_contexts]
         return {
             "query": query,
             "route": route["route"],
@@ -81,6 +101,57 @@ class RetrievalPipeline:
             "seed_contexts": seed_chunks,
             "expanded_contexts": expanded_contexts,
             "final_contexts": final_contexts,
+        }
+
+    def _run_qdrant(self, query: str) -> Dict[str, object]:
+        initial_route = route_query(query, seed_chunks=[])
+        preferred_domains = list(initial_route.get("domains") or [])
+        dense_candidates = self.qdrant_retriever.search(query, preferred_domains=preferred_domains) if self.qdrant_retriever else []
+        sparse_candidates = (
+            self.bm25_retriever.search(query, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
+            if self.bm25_retriever
+            else []
+        )
+        exact_candidates = (
+            self.exact_search.search(query, top_k=self.runtime_config.candidate_k_title, preferred_domains=preferred_domains)
+            if self.exact_search
+            else []
+        )
+        apply_domain_adjustment(query, dense_candidates)
+        reranked = fuse_candidates(
+            query,
+            dense_candidates=dense_candidates,
+            bm25_candidates=sparse_candidates,
+            exact_candidates=exact_candidates,
+            preferred_domains=preferred_domains,
+            config=self.runtime_config,
+        )
+        # Optional hybrid reranker pass on fused candidates
+        if self._use_hybrid_reranker:
+            if not self.reranker:
+                self.reranker = HybridReranker()
+            reranked = self.reranker.rerank(query, reranked, max_contexts=self.runtime_config.candidate_k_chunks)
+        final_contexts = select_dynamic_contexts(reranked, config=self.runtime_config)
+        confidence_result = {
+            "is_confident": bool(final_contexts),
+            "should_escalate": False,
+            "recommended_route": initial_route.get("route"),
+            "score": float(final_contexts[0].get("final_score") or 0.0) if final_contexts else 0.0,
+        }
+        return {
+            "query": query,
+            "route": initial_route["route"],
+            "domains": initial_route["domains"],
+            "initial_route_result": initial_route,
+            "route_result": initial_route,
+            "confidence_result": confidence_result,
+            "seed_chunks": reranked[: min(5, len(reranked))],
+            "seed_contexts": reranked[: min(5, len(reranked))],
+            "expanded_contexts": reranked,
+            "final_contexts": final_contexts,
+            "dense_candidates": dense_candidates,
+            "sparse_candidates": sparse_candidates,
+            "exact_candidates": exact_candidates,
         }
 
 
