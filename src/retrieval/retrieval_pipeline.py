@@ -125,9 +125,14 @@ class RetrievalPipeline:
         t_sparse = time.perf_counter() - t0
         
         t0 = time.perf_counter()
+        # Skip exact search if disabled or query has no legal ref pattern
+        skip_exact = self.runtime_config.candidate_k_title <= 0
+        if not skip_exact and self.exact_search:
+            from src.retrieval.legal_exact_search import LEGAL_REF_PATTERN
+            skip_exact = not LEGAL_REF_PATTERN.search(query)
         exact_candidates = (
             self.exact_search.search(query, top_k=self.runtime_config.candidate_k_title, preferred_domains=preferred_domains)
-            if self.exact_search
+            if self.exact_search and not skip_exact
             else []
         )
         t_exact = time.perf_counter() - t0
