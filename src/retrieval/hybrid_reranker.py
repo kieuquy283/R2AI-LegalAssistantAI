@@ -46,15 +46,17 @@ class HybridReranker:
 
     def _try_load_cross_encoder(self) -> None:
         try:
+            import torch
             from sentence_transformers import CrossEncoder
-            print(f"[HybridReranker] Loading cross-encoder model: {self.cross_encoder_model}")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            print(f"[HybridReranker] Loading cross-encoder model: {self.cross_encoder_model} on {device}")
             self._cross_encoder = CrossEncoder(
                 self.cross_encoder_model,
                 max_length=self.max_length,
-                device="cpu",
+                device=device,
             )
             self._cross_encoder_available = True
-            print(f"[HybridReranker] Cross-encoder loaded successfully.")
+            print(f"[HybridReranker] Cross-encoder loaded successfully on {device}.")
         except Exception as exc:
             print(f"[HybridReranker] Failed to load cross-encoder '{self.cross_encoder_model}': {exc}. Fallback to heuristic only.")
             self._cross_encoder_available = False
