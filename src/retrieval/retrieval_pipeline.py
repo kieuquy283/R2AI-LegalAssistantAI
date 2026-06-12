@@ -104,20 +104,39 @@ class RetrievalPipeline:
         }
 
     def _run_qdrant(self, query: str) -> Dict[str, object]:
+        import time
+        t_total = time.perf_counter()
+        
+        t0 = time.perf_counter()
         initial_route = route_query(query, seed_chunks=[])
         preferred_domains = list(initial_route.get("domains") or [])
+        t_route = time.perf_counter() - t0
+        
+        t0 = time.perf_counter()
         dense_candidates = self.qdrant_retriever.search(query, preferred_domains=preferred_domains) if self.qdrant_retriever else []
+        t_dense = time.perf_counter() - t0
+        
+        t0 = time.perf_counter()
         sparse_candidates = (
             self.bm25_retriever.search(query, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
             if self.bm25_retriever
             else []
         )
+        t_sparse = time.perf_counter() - t0
+        
+        t0 = time.perf_counter()
         exact_candidates = (
             self.exact_search.search(query, top_k=self.runtime_config.candidate_k_title, preferred_domains=preferred_domains)
             if self.exact_search
             else []
         )
+        t_exact = time.perf_counter() - t0
+        
+        t0 = time.perf_counter()
         apply_domain_adjustment(query, dense_candidates)
+        t_domain = time.perf_counter() - t0
+        
+        t0 = time.perf_counter()
         reranked = fuse_candidates(
             query,
             dense_candidates=dense_candidates,
@@ -126,12 +145,25 @@ class RetrievalPipeline:
             preferred_domains=preferred_domains,
             config=self.runtime_config,
         )
+        t_fuse = time.perf_counter() - t0
+        
         # Optional hybrid reranker pass on fused candidates
         if self._use_hybrid_reranker:
+            t0 = time.perf_counter()
             if not self.reranker:
                 self.reranker = HybridReranker()
             reranked = self.reranker.rerank(query, reranked, max_contexts=self.runtime_config.candidate_k_chunks)
+            t_rerank = time.perf_counter() - t0
+        else:
+            t_rerank = 0.0
+        
+        t0 = time.perf_counter()
         final_contexts = select_dynamic_contexts(reranked, config=self.runtime_config)
+        t_select = time.perf_counter() - t0
+        
+        t_total = time.perf_counter() - t_total
+        print(f"[Retrieval] route={t_route:.3f}s dense={t_dense:.3f}s sparse={t_sparse:.3f}s exact={t_exact:.3f}s domain={t_domain:.3f}s fuse={t_fuse:.3f}s rerank={t_rerank:.3f}s select={t_select:.3f}s TOTAL={t_total:.3f}s")
+        
         confidence_result = {
             "is_confident": bool(final_contexts),
             "should_escalate": False,
