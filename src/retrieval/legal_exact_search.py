@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 import re
+import time
 import unicodedata
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -28,9 +30,16 @@ class LegalExactSearch:
         articles_path: str | Path | None = None,
         chunks_path: str | Path | None = None,
     ) -> None:
+        t0 = time.perf_counter()
         self.documents = read_jsonl(documents_path or self._default_path("merged_documents.jsonl", "documents.jsonl"))
         self.articles = read_jsonl(articles_path or self._default_path("merged_legal_nodes.jsonl", "legal_nodes.jsonl"))
         self.chunks = read_jsonl(chunks_path or self._default_path("merged_chunks.jsonl", "chunks.jsonl"))
+        
+        # Build dictionary indexes for O(1) lookup
+        self._doc_index = self._build_index(self.documents)
+        self._article_index = self._build_index(self.articles)
+        self._chunk_index = self._build_index(self.chunks)
+        print(f"[LegalExactSearch] Built indexes in {time.perf_counter() - t0:.3f}s (docs={len(self.documents)}, articles={len(self.articles)}, chunks={len(self.chunks)})")
 
     @staticmethod
     def _default_path(merged_name: str, base_name: str) -> Path:
@@ -46,6 +55,19 @@ class LegalExactSearch:
         if merged.exists():
             return merged
         return Path("data/processed") / base_name
+
+    @staticmethod
+    def _build_index(rows: list[dict]) -> dict[str, list[dict]]:
+        """Build index by doc_number and article for O(1) lookup."""
+        index: dict[str, list[dict]] = defaultdict(list)
+        for row in rows:
+            doc_number = str(row.get("doc_number") or "").strip()
+            if doc_number:
+                index[doc_number.lower()].append(row)
+            article = str(row.get("article") or "").strip()
+            if article:
+                index[article.lower()].append(row)
+        return index
 
     @staticmethod
     def _allowed_domain(row: dict[str, Any], preferred_domains: Sequence[str] | None) -> bool:
@@ -107,13 +129,52 @@ class LegalExactSearch:
         }
 
     def search(self, query: str, *, top_k: int, preferred_domains: Sequence[str] | None = None) -> list[dict[str, Any]]:
+        t0 = time.perf_counter()
+        
+        # Extract legal references from query
+        legal_refs = [match.group(0) for match in LEGAL_REF_PATTERN.finditer(query)]
+        articles = [match.group(0) for match in ARTICLE_PATTERN.finditer(query)]
+        
+        if not legal_refs and not articles:
+            # No exact references to look up
+            return []
+        
         scored: list[tuple[float, str, dict[str, Any]]] = []
-        for level, rows in (("doc", self.documents), ("article", self.articles), ("chunk", self.chunks)):
-            for row in rows:
-                if not self._allowed_domain(row, preferred_domains):
-                    continue
-                score = self._score(query, row, level)
-                if score > 0.0:
-                    scored.append((score, level, row))
+        seen = set()
+        
+        # Lookup by legal reference (doc_number)
+        for ref in legal_refs:
+            ref_lower = ref.lower()
+            for level, index in (("doc", self._doc_index), ("article", self._article_index), ("chunk", self._chunk_index)):
+                if ref_lower in index:
+                    for row in index[ref_lower]:
+                        row_id = id(row)
+                        if row_id in seen:
+                            continue
+                        seen.add(row_id)
+                        if not self._allowed_domain(row, preferred_domains):
+                            continue
+                        score = self._score(query, row, level)
+                        if score > 0.0:
+                            scored.append((score, level, row))
+        
+        # Lookup by article reference
+        for article in articles:
+            article_lower = article.lower()
+            for level, index in (("article", self._article_index), ("chunk", self._chunk_index), ("doc", self._doc_index)):
+                if article_lower in index:
+                    for row in index[article_lower]:
+                        row_id = id(row)
+                        if row_id in seen:
+                            continue
+                        seen.add(row_id)
+                        if not self._allowed_domain(row, preferred_domains):
+                            continue
+                        score = self._score(query, row, level)
+                        if score > 0.0:
+                            scored.append((score, level, row))
+        
         scored.sort(key=lambda item: item[0], reverse=True)
-        return [self._make_candidate(level, row, score) for score, level, row in scored[:top_k]]
+        results = [self._make_candidate(level, row, score) for score, level, row in scored[:top_k]]
+        print(f"[LegalExactSearch] {len(results)} results in {time.perf_counter() - t0:.3f}s (refs={legal_refs}, articles={articles})")
+        return results
