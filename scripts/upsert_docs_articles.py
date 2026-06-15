@@ -13,8 +13,10 @@ from typing import Any, Generator
 from uuid import UUID
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, PointStruct, VectorParams, PayloadSchemaType
 from sentence_transformers import SentenceTransformer
+
+import random
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 _log = logging.getLogger(__name__)
@@ -75,7 +77,14 @@ def _record_to_point(record: dict[str, Any], vector: list[float]) -> PointStruct
     if raw_id is None:
         return None
     point_id = _to_qdrant_id(raw_id)
-    payload = {k: v for k, v in record.items() if k not in ("vector", "embedding", "id", "doc_id", "node_id")}
+    payload: dict[str, Any] = {}
+    for k, v in record.items():
+        if k in ("vector", "embedding", "id", "doc_id", "node_id"):
+            continue
+        if k == "metadata" and isinstance(v, dict):
+            payload.update(v)
+        else:
+            payload[k] = v
     return PointStruct(id=point_id, vector=vector, payload=payload)
 
 
@@ -154,24 +163,121 @@ def _upsert_streaming(
     return total_upserted
 
 
-def _ensure_collection(client: QdrantClient, collection_name: str, vector_size: int, recreate: bool) -> None:
+def _create_payload_indexes(client: QdrantClient, collection_name: str, is_graph: bool = False) -> None:
+    """Create payload indexes for date fields and graph fields."""
+    # Date / status indexes (for all chunk collections)
+    for field, schema in (
+        ("effective_date", PayloadSchemaType.DATETIME),
+        ("expiry_date", PayloadSchemaType.DATETIME),
+        ("status", PayloadSchemaType.KEYWORD),
+    ):
+        try:
+            client.create_payload_index(
+                collection_name=collection_name,
+                field_name=field,
+                field_schema=schema,
+            )
+            _log.info("Created %s index on '%s' for '%s'", schema.name, field, collection_name)
+        except Exception as e:
+            _log.warning("Index on '%s' may already exist or failed: %s", field, e)
+
+    if is_graph:
+        # Graph traversal indexes
+        for field in (
+            "doc_id", "chunk_id", "context_chunk_id",
+            "parent_id", "prev_chunk_id", "next_chunk_id",
+            "source_id", "target_id", "relation_type",
+        ):
+            try:
+                client.create_payload_index(
+                    collection_name=collection_name,
+                    field_name=field,
+                    field_schema=PayloadSchemaType.KEYWORD,
+                )
+                _log.info("Created KEYWORD index on '%s' for '%s'", field, collection_name)
+            except Exception as e:
+                _log.warning("Index on '%s' may already exist or failed: %s", field, e)
+
+
+def _ensure_collection(client: QdrantClient, collection_name: str, vector_size: int, recreate: bool, distance: Distance = Distance.COSINE) -> None:
     if recreate:
         if client.collection_exists(collection_name):
             client.delete_collection(collection_name)
             _log.info("Deleted existing collection '%s'", collection_name)
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            vectors_config=VectorParams(size=vector_size, distance=distance),
         )
-        _log.info("Created collection '%s' (size=%d, distance=Cosine)", collection_name, vector_size)
+        _log.info("Created collection '%s' (size=%d, distance=%s)", collection_name, vector_size, distance.name)
+        _create_payload_indexes(client, collection_name, is_graph=True)
     else:
         if not client.collection_exists(collection_name):
             client.create_collection(
                 collection_name=collection_name,
-                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+                vectors_config=VectorParams(size=vector_size, distance=distance),
             )
-            _log.info("Created collection '%s' (size=%d, distance=Cosine)", collection_name, vector_size)
+            _log.info("Created collection '%s' (size=%d, distance=%s)", collection_name, vector_size, distance.name)
+            _create_payload_indexes(client, collection_name, is_graph=True)
 
+
+def _upsert_edges_streaming(
+    client: QdrantClient,
+    collection_name: str,
+    file_path: Path,
+    vector_size: int,
+    upsert_batch_size: int,
+) -> int:
+    """Upsert legal edges with dummy vectors (graph traversal, no semantic search)."""
+    dummy_vector = [1e-6] * vector_size
+    total_upserted = 0
+    points_buffer: list[PointStruct] = []
+
+    for record in _stream_jsonl(file_path):
+        source_id = record.get("source_id")
+        target_id = record.get("target_id")
+        relation = record.get("relation_type")
+        if source_id is None or target_id is None or relation is None:
+            continue
+        # Deterministic unique edge ID
+        edge_id_raw = f"{source_id}__{relation}__{target_id}"
+        point_id = _to_qdrant_id(edge_id_raw)
+        payload = {
+            "source_id": str(source_id),
+            "target_id": str(target_id),
+            "relation_type": str(relation),
+            "confidence": record.get("confidence", 1.0),
+        }
+        points_buffer.append(PointStruct(id=point_id, vector=dummy_vector, payload=payload))
+
+        if len(points_buffer) >= upsert_batch_size:
+            batch = points_buffer[:upsert_batch_size]
+            client.upsert(collection_name=collection_name, points=batch, wait=False)
+            total_upserted += len(batch)
+            points_buffer = points_buffer[upsert_batch_size:]
+            if total_upserted % 5000 == 0:
+                _log.info("Upserted %d edges", total_upserted)
+
+    if points_buffer:
+        client.upsert(collection_name=collection_name, points=points_buffer, wait=False)
+        total_upserted += len(points_buffer)
+
+    _log.info("Total edges upserted: %d", total_upserted)
+    return total_upserted
+    """Peek into the file to get the vector size if pre-computed vectors exist."""
+    if not file_path.exists():
+        return None
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                try:
+                    record = json.loads(line)
+                    vec = record.get("vector")
+                    if isinstance(vec, list) and len(vec) > 0:
+                        return len(vec)
+                except json.JSONDecodeError:
+                    pass
+                break
+    return None
 
 def _get_vector_size_from_file(file_path: Path) -> int | None:
     """Peek into the file to get the vector size if pre-computed vectors exist."""
@@ -190,18 +296,22 @@ def _get_vector_size_from_file(file_path: Path) -> int | None:
                 break
     return None
 
+
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
-    parser = argparse.ArgumentParser(description="Embed and upsert documents/articles to Qdrant.")
-    parser.add_argument("--type", choices=["docs", "articles", "both"], default="both", help="What to upsert")
+    parser = argparse.ArgumentParser(description="Embed and upsert documents/articles/chunks/context/edges to Qdrant.")
+    parser.add_argument("--type", choices=["docs", "articles", "chunks", "context", "edges", "all"], default="all", help="What to upsert")
     parser.add_argument("--qdrant-url", default="http://localhost:6333", help="Qdrant HTTP URL")
     parser.add_argument("--embed-batch-size", type=int, default=8, help="Embedding batch size (keep small for CPU)")
-    parser.add_argument("--upsert-batch-size", type=int, default=512, help="Upsert batch size (increased for pre-computed vectors)")
+    parser.add_argument("--upsert-batch-size", type=int, default=512, help="Upsert batch size")
     parser.add_argument("--recreate", action="store_true", help="Drop and recreate collections")
-    parser.add_argument("--docs-file", default="data/processed/cleaned_documents_enriched.jsonl", help="Documents JSONL")
-    parser.add_argument("--articles-file", default="data/processed/legal_nodes.jsonl", help="Articles JSONL")
+    parser.add_argument("--docs-file", default="data/processed/cleaned_documents_enriched.jsonl")
+    parser.add_argument("--articles-file", default="data/processed/legal_nodes.jsonl")
+    parser.add_argument("--chunks-file", default="data/processed/legal_chunks_embedded.jsonl")
+    parser.add_argument("--context-chunks-file", default="data/processed/legal_context_chunks_embedded.jsonl")
+    parser.add_argument("--edges-file", default="data/processed/legal_edges.jsonl")
     args = parser.parse_args()
 
     _ensure_cache()
@@ -211,12 +321,28 @@ def main() -> None:
     # Smart model loading: only load if files don't have pre-computed vectors
     docs_path = Path(args.docs_file)
     articles_path = Path(args.articles_file)
-    
-    docs_vector_size = _get_vector_size_from_file(docs_path) if args.type in ("docs", "both") else None
-    articles_vector_size = _get_vector_size_from_file(articles_path) if args.type in ("articles", "both") else None
-    
-    has_precomputed = docs_vector_size is not None or articles_vector_size is not None
-    vector_size = docs_vector_size or articles_vector_size or 1024 # fallback to 1024 for bge-m3
+    chunks_path = Path(args.chunks_file)
+    context_chunks_path = Path(args.context_chunks_file)
+    edges_path = Path(args.edges_file)
+
+    files_to_check = []
+    if args.type in ("docs", "all"):
+        files_to_check.append(docs_path)
+    if args.type in ("articles", "all"):
+        files_to_check.append(articles_path)
+    if args.type in ("chunks", "context", "all"):
+        files_to_check.append(chunks_path)
+        files_to_check.append(context_chunks_path)
+
+    vector_size = None
+    for fp in files_to_check:
+        sz = _get_vector_size_from_file(fp)
+        if sz is not None:
+            vector_size = sz
+            break
+
+    has_precomputed = vector_size is not None
+    vector_size = vector_size or 1024  # fallback to 1024 for bge-m3
 
     model = None
     if not has_precomputed:
@@ -230,7 +356,7 @@ def main() -> None:
 
     total_upserted = 0
 
-    if args.type in ("docs", "both"):
+    if args.type in ("docs", "all"):
         docs_path = Path(args.docs_file)
         if docs_path.exists():
             _log.info("=== Upserting documents ===")
@@ -242,7 +368,7 @@ def main() -> None:
         else:
             _log.warning("Documents file not found: %s", docs_path)
 
-    if args.type in ("articles", "both"):
+    if args.type in ("articles", "all"):
         articles_path = Path(args.articles_file)
         if articles_path.exists():
             _log.info("=== Upserting articles ===")
@@ -253,6 +379,39 @@ def main() -> None:
             total_upserted += count
         else:
             _log.warning("Articles file not found: %s", articles_path)
+
+    if args.type in ("chunks", "all"):
+        if chunks_path.exists():
+            _log.info("=== Upserting chunks (pre-computed vectors) ===")
+            _ensure_collection(client, "legal_chunks", vector_size, args.recreate)
+            t0 = time.time()
+            count = _upsert_streaming(client, "legal_chunks", None, chunks_path, args.embed_batch_size, args.upsert_batch_size)
+            _log.info("Chunks upserted: %d in %.1fs", count, time.time() - t0)
+            total_upserted += count
+        else:
+            _log.warning("Chunks file not found: %s", chunks_path)
+
+    if args.type in ("context", "all"):
+        if context_chunks_path.exists():
+            _log.info("=== Upserting context chunks (pre-computed vectors) ===")
+            _ensure_collection(client, "legal_context_chunks", vector_size, args.recreate)
+            t0 = time.time()
+            count = _upsert_streaming(client, "legal_context_chunks", None, context_chunks_path, args.embed_batch_size, args.upsert_batch_size)
+            _log.info("Context chunks upserted: %d in %.1fs", count, time.time() - t0)
+            total_upserted += count
+        else:
+            _log.warning("Context chunks file not found: %s", context_chunks_path)
+
+    if args.type in ("edges", "all"):
+        if edges_path.exists():
+            _log.info("=== Upserting edges (dummy vectors) ===")
+            _ensure_collection(client, "legal_edges", vector_size, args.recreate)
+            t0 = time.time()
+            count = _upsert_edges_streaming(client, "legal_edges", edges_path, vector_size, args.upsert_batch_size)
+            _log.info("Edges upserted: %d in %.1fs", count, time.time() - t0)
+            total_upserted += count
+        else:
+            _log.warning("Edges file not found: %s", edges_path)
 
     _log.info("=== Done. Total upserted: %d ===", total_upserted)
 

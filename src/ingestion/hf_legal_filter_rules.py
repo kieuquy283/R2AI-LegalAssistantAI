@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
-from typing import Any
+from datetime import date, datetime
+from typing import Any, Dict, Optional, Tuple, List
 
 
 def normalize_match_text(text: str) -> str:
@@ -393,3 +395,174 @@ def evaluate_hf_legal_filter(record: dict[str, Any]) -> dict[str, Any]:
         "priority": priority if include else 999,
         "reason": reason,
     }
+
+
+# ──────────────────────────────────────────────
+# Date parsing & time-based filtering helpers
+# ──────────────────────────────────────────────
+
+_VI_DATE_PATTERNS: List[Tuple[re.Pattern, bool]] = [
+    # "ngày 01 tháng 01 năm 2020"
+    (re.compile(r"ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})", re.IGNORECASE), False),
+    # "01/01/2020" or "1/1/2020"
+    (re.compile(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})"), False),
+    # ISO "2020-01-01"
+    (re.compile(r"(\d{4})-(\d{2})-(\d{2})"), True),
+]
+
+
+def _parse_vi_date(raw: Any) -> Optional[date]:
+    """Robustly parse a Vietnamese date string into a Python date."""
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw.date()
+    if isinstance(raw, date):
+        return raw
+    s = str(raw).strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    for pat, iso_order in _VI_DATE_PATTERNS:
+        m = pat.search(s)
+        if m:
+            if iso_order:
+                y, mon, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            else:
+                d, mon, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            try:
+                return date(y, mon, d)
+            except ValueError:
+                continue
+    return None
+
+
+def extract_legal_dates(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract issued_date, effective_date, expiry_date, status from a HF document dict."""
+    meta = doc.get("metadata") or {}
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except Exception:
+            meta = {}
+
+    issued: Optional[date] = None
+    effective: Optional[date] = None
+    expiry: Optional[date] = None
+    status: Optional[str] = None
+
+    # 1. issued_date (ngày ban hành) — separate from effective_date
+    for iss_key in ("date_issued", "ngay_ban_hanh", "issued_date"):
+        val = meta.get(iss_key) or doc.get(iss_key)
+        if val:
+            issued = _parse_vi_date(val)
+            if issued:
+                break
+
+    # 2. effective_date — ONLY from explicit fields or "có hiệu lực từ ngày" regex
+    for eff_key in ("effective_date", "ngay_co_hieu_luc", "hieu_luc_tu"):
+        val = meta.get(eff_key) or doc.get(eff_key)
+        if val:
+            effective = _parse_vi_date(val)
+            if effective:
+                break
+
+    # 3. expiry_date
+    for exp_key in ("expiry_date", "ngay_het_hieu_luc", "het_hieu_luc", "expiration"):
+        val = meta.get(exp_key) or doc.get(exp_key)
+        if val:
+            expiry = _parse_vi_date(val)
+            if expiry:
+                break
+
+    # 4. status from metadata
+    for st_key in ("status", "trang_thai", "tinh_trang", "hieu_luc"):
+        val = meta.get(st_key) or doc.get(st_key)
+        if val:
+            status = str(val).strip()
+            break
+
+    # ── Regex fallback (only on first 5000 chars to avoid matching random dates inside content) ──
+    title = str(doc.get("title") or "").strip()
+    content = str(doc.get("content") or "").strip()
+    # Use preamble only (first part of document) for date inference
+    preamble = (title + "\n" + content[:5000]).strip()
+
+    if effective is None:
+        # Match: "có hiệu lực từ ngày dd/mm/yyyy" or "hiệu lực thi hành từ ngày ..."
+        m = re.search(
+            r"(?:có\s+hiệu\s+lực|hiệu\s+lực\s+thi\s+hành)\s+từ\s+ngày\s+(\d{1,2})[/-](\d{1,2})[/-](\d{4})",
+            preamble, re.IGNORECASE,
+        )
+        if m:
+            effective = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        else:
+            m2 = re.search(
+                r"(?:có\s+hiệu\s+lực|hiệu\s+lực\s+thi\s+hành)\s+từ\s+ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})",
+                preamble, re.IGNORECASE,
+            )
+            if m2:
+                effective = date(int(m2.group(3)), int(m2.group(2)), int(m2.group(1)))
+
+    if expiry is None:
+        m = re.search(
+            r"hết\s+hiệu\s+lực\s+(?:vào\s+)?ngày\s+(\d{1,2})[/-](\d{1,2})[/-](\d{4})",
+            preamble, re.IGNORECASE,
+        )
+        if m:
+            expiry = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        else:
+            m2 = re.search(
+                r"ngày\s+(\d{1,2})[/-](\d{1,2})[/-](\d{4}).*?hết\s+hiệu\s+lực",
+                preamble, re.IGNORECASE,
+            )
+            if m2:
+                expiry = date(int(m2.group(3)), int(m2.group(2)), int(m2.group(1)))
+
+    if status is None:
+        lower = preamble.lower()
+        if "hết hiệu lực" in lower or "bị thay thế" in lower or "đã bị bãi bỏ" in lower:
+            status = "Hết hiệu lực"
+        elif "còn hiệu lực" in lower or "đang có hiệu lực" in lower:
+            status = "Vẫn còn hiệu lực"
+        else:
+            status = "Vẫn còn hiệu lực"  # default assumption
+
+    return {
+        "issued_date": issued.isoformat() if issued else None,
+        "effective_date": effective.isoformat() if effective else None,
+        "expiry_date": expiry.isoformat() if expiry else None,
+        "status": status,
+    }
+
+
+def is_valid_on_date(doc_dates: Dict[str, Any], cutoff: date) -> bool:
+    """Return True iff effective_date <= cutoff AND still valid on cutoff."""
+    eff_str = doc_dates.get("effective_date")
+    exp_str = doc_dates.get("expiry_date")
+    status = (doc_dates.get("status") or "").strip().lower()
+
+    if eff_str:
+        try:
+            effective = date.fromisoformat(eff_str)
+            if effective > cutoff:
+                return False
+        except ValueError:
+            pass
+
+    if exp_str:
+        try:
+            expiry = date.fromisoformat(exp_str)
+            if expiry <= cutoff:
+                return False
+        except ValueError:
+            pass
+    else:
+        if status not in {"vẫn còn hiệu lực", "còn hiệu lực", "đang có hiệu lực", "valid", "active"}:
+            return False
+
+    return True

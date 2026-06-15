@@ -13,7 +13,8 @@ from huggingface_hub import HfFileSystem
 from tqdm import tqdm
 
 from src.ingestion.common import ensure_parent, normalize_text, sha256_text, slugify_vi, write_json
-from src.ingestion.hf_legal_filter_rules import evaluate_hf_legal_filter
+from src.ingestion.hf_legal_filter_rules import evaluate_hf_legal_filter, extract_legal_dates, is_valid_on_date
+from datetime import date
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -34,14 +35,17 @@ def _clean_html(html: str) -> str:
     return normalize_text(soup.get_text("\n", strip=True))
 
 
-def _iter_parquet_rows(dataset_name: str, parquet_name: str) -> Iterable[dict[str, Any]]:
+def _iter_parquet_rows(
+    dataset_name: str,
+    parquet_name: str,
+    columns: list[str] | None = None,
+    batch_size: int = 1000,
+) -> Iterable[dict[str, Any]]:
     fs = HfFileSystem()
     parquet_path = f"{_dataset_repo_prefix(dataset_name)}/{parquet_name}.parquet"
     with fs.open(parquet_path, "rb") as handle:
-        parquet = pq.ParquetFile(handle)
-        for row_group_index in range(parquet.num_row_groups):
-            table = parquet.read_row_group(row_group_index)
-            for row in table.to_pylist():
+        for batch in pq.ParquetFile(handle).iter_batches(batch_size=batch_size, columns=columns):
+            for row in batch.to_pylist():
                 if isinstance(row, dict):
                     yield row
 
@@ -74,13 +78,18 @@ def _normalize_metadata_row(row: dict[str, Any]) -> dict[str, Any]:
 
 def _join_metadata_and_content(dataset_name: str, limit: int | None = None) -> Iterable[dict[str, Any]]:
     metadata_by_id: dict[str, dict[str, Any]] = {}
-    for row in _iter_parquet_rows(dataset_name, "metadata"):
+    meta_columns = [
+        "id", "title", "so_ky_hieu", "loai_van_ban",
+        "co_quan_ban_hanh", "ngay_ban_hanh", "ngay_co_hieu_luc", "nguon_thu_thap",
+    ]
+    for row in _iter_parquet_rows(dataset_name, "metadata", columns=meta_columns):
         normalized = _normalize_metadata_row(row)
         if normalized["source_id"]:
             metadata_by_id[normalized["source_id"]] = normalized
 
     yielded = 0
-    for row in _iter_parquet_rows(dataset_name, "content"):
+    content_columns = ["id", "content_html"]
+    for row in _iter_parquet_rows(dataset_name, "content", columns=content_columns):
         source_id = str(row.get("id") or "").strip()
         metadata = metadata_by_id.get(source_id)
         if not metadata:
@@ -110,8 +119,10 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
         "# HF Filter Report",
         "",
         f"- Dataset: `{report['dataset']}`",
+        f"- Cutoff date: `{report['cutoff_date']}`",
         f"- Total scanned records: `{report['total_scanned_records']}`",
         f"- Total matched records: `{report['total_matched_records']}`",
+        f"- Total time-excluded records: `{report['total_time_excluded']}`",
         f"- Total deduplicated records: `{report['total_deduplicated_records']}`",
         "",
         "## Count By Domain",
@@ -140,13 +151,19 @@ def _render_markdown_report(report: dict[str, Any]) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def run_filter(dataset_name: str, output_path: Path, limit: int | None = None) -> dict[str, Any]:
+def run_filter(
+    dataset_name: str,
+    output_path: Path,
+    limit: int | None = None,
+    cutoff: date = date(2026, 3, 1),
+    chunks_output_path: Path | None = None,
+) -> dict[str, Any]:
     scanned = 0
     matched = 0
+    time_excluded = 0
     deduped = 0
     seen_keys: set[tuple[str, str, str]] = set()
-    
-    # INCREMENTAL UPDATE: Load existing hashes to skip already processed data
+
     existing_hashes = set()
     if output_path.exists():
         print(f"[INFO] Found existing file: {output_path}. Loading existing hashes to skip duplicates...")
@@ -166,66 +183,104 @@ def run_filter(dataset_name: str, output_path: Path, limit: int | None = None) -
     sample_docs: dict[str, list[dict[str, Any]]] = defaultdict(list)
     iterator = _join_metadata_and_content(dataset_name=dataset_name, limit=limit)
     ensure_parent(output_path)
-    
-    # Use "a" (append) mode to add new records without deleting old ones
+    if chunks_output_path:
+        ensure_parent(chunks_output_path)
+
     with output_path.open("a", encoding="utf-8") as handle:
-        for row in tqdm(iterator, desc="filter_hf_legal_dataset", unit="doc"):
-            scanned += 1
-            
-            # Skip if already processed in previous runs
-            content_hash = str(row.get("content_hash") or sha256_text(str(row.get("content") or ""))).strip()
-            if content_hash in existing_hashes:
-                continue
+        chunks_handle = (
+            chunks_output_path.open("a", encoding="utf-8")
+            if chunks_output_path else None
+        )
+        try:
+            for row in tqdm(iterator, desc="filter_hf_legal_dataset", unit="doc"):
+                scanned += 1
 
-            filter_result = evaluate_hf_legal_filter(row)
-            if not filter_result["include"]:
-                continue
-            matched += 1
+                content_hash = str(row.get("content_hash") or sha256_text(str(row.get("content") or ""))).strip()
+                if content_hash in existing_hashes:
+                    continue
 
-            normalized_row = {
-                "source_dataset": dataset_name,
-                "source_id": row["source_id"],
-                "doc_id": row["doc_id"],
-                "doc_title": row["doc_title"],
-                "doc_type": row["doc_type"],
-                "doc_number": row["doc_number"],
-                "issuer": row["issuer"],
-                "issued_date": row["issued_date"],
-                "effective_date": row["effective_date"],
-                "domain": filter_result["domain"],
-                "candidate_domains": filter_result["candidate_domains"],
-                "matched_group": filter_result["matched_group"],
-                "matched_keywords": filter_result["matched_keywords"],
-                "priority": filter_result["priority"],
-                "source_url": row["source_url"],
-                "content": row["content"],
-                "content_hash": content_hash,
-            }
+                filter_result = evaluate_hf_legal_filter(row)
+                if not filter_result["include"]:
+                    continue
+                matched += 1
 
-            dedupe_key = _dedupe_key(normalized_row)
-            if dedupe_key in seen_keys:
-                continue
-            seen_keys.add(dedupe_key)
-            deduped += 1
+                # ── Time-based filtering ──
+                legal_dates = extract_legal_dates(row)
+                if not is_valid_on_date(legal_dates, cutoff):
+                    time_excluded += 1
+                    continue
 
-            handle.write(json.dumps(normalized_row, ensure_ascii=False) + "\n")
-            domain_counter.update(normalized_row["candidate_domains"])
-            group_counter.update([normalized_row["matched_group"]])
-            keyword_counter.update(normalized_row["matched_keywords"])
-            title_counter.update([normalized_row["doc_title"]])
-            if len(sample_docs[normalized_row["matched_group"]]) < 3:
-                sample_docs[normalized_row["matched_group"]].append(
-                    {
-                        "doc_title": normalized_row["doc_title"],
-                        "doc_number": normalized_row["doc_number"],
-                        "domain": normalized_row["domain"],
-                        "matched_keywords": normalized_row["matched_keywords"][:10],
+                normalized_row = {
+                    "source_dataset": dataset_name,
+                    "source_id": row["source_id"],
+                    "doc_id": row["doc_id"],
+                    "doc_title": row["doc_title"],
+                    "doc_type": row["doc_type"],
+                    "doc_number": row["doc_number"],
+                    "issuer": row["issuer"],
+                    "issued_date": legal_dates.get("issued_date") or row.get("issued_date"),
+                    "effective_date": legal_dates["effective_date"],
+                    "expiry_date": legal_dates["expiry_date"],
+                    "status": legal_dates["status"],
+                    "domain": filter_result["domain"],
+                    "candidate_domains": filter_result["candidate_domains"],
+                    "matched_group": filter_result["matched_group"],
+                    "matched_keywords": filter_result["matched_keywords"],
+                    "priority": filter_result["priority"],
+                    "source_url": row["source_url"],
+                    "content": row["content"],
+                    "content_hash": content_hash,
+                }
+
+                dedupe_key = _dedupe_key(normalized_row)
+                if dedupe_key in seen_keys:
+                    continue
+                seen_keys.add(dedupe_key)
+                deduped += 1
+
+                handle.write(json.dumps(normalized_row, ensure_ascii=False) + "\n")
+
+                # Write chunk-ready format for embedding
+                if chunks_handle is not None:
+                    chunk_record = {
+                        "id": normalized_row["doc_id"],
+                        "text": normalized_row["content"],
+                        "metadata": {
+                            "doc_title": normalized_row["doc_title"],
+                            "doc_number": normalized_row["doc_number"],
+                            "domain": normalized_row["domain"],
+                            "effective_date": normalized_row["effective_date"],
+                            "expiry_date": normalized_row["expiry_date"],
+                            "status": normalized_row["status"],
+                            "matched_group": normalized_row["matched_group"],
+                            "source_url": normalized_row["source_url"],
+                        },
                     }
-                )
+                    chunks_handle.write(json.dumps(chunk_record, ensure_ascii=False) + "\n")
+
+                domain_counter.update(normalized_row["candidate_domains"])
+                group_counter.update([normalized_row["matched_group"]])
+                keyword_counter.update(normalized_row["matched_keywords"])
+                title_counter.update([normalized_row["doc_title"]])
+                if len(sample_docs[normalized_row["matched_group"]]) < 3:
+                    sample_docs[normalized_row["matched_group"]].append(
+                        {
+                            "doc_title": normalized_row["doc_title"],
+                            "doc_number": normalized_row["doc_number"],
+                            "domain": normalized_row["domain"],
+                            "matched_keywords": normalized_row["matched_keywords"][:10],
+                        }
+                    )
+        finally:
+            if chunks_handle is not None:
+                chunks_handle.close()
+
     report = {
         "dataset": dataset_name,
+        "cutoff_date": cutoff.isoformat(),
         "total_scanned_records": scanned,
         "total_matched_records": matched,
+        "total_time_excluded": time_excluded,
         "total_deduplicated_records": deduped,
         "count_by_domain": dict(domain_counter.most_common()),
         "count_by_matched_group": dict(group_counter.most_common()),
@@ -233,6 +288,7 @@ def run_filter(dataset_name: str, output_path: Path, limit: int | None = None) -
         "top_document_titles": title_counter.most_common(20),
         "sample_matched_docs_per_group": dict(sample_docs),
         "output_path": str(output_path),
+        "chunks_output_path": str(chunks_output_path) if chunks_output_path else None,
     }
     return report
 
@@ -245,18 +301,28 @@ def main() -> None:
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
     parser.add_argument("--streaming", action="store_true", help="Accepted for CLI compatibility.")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--cutoff-date", default="2026-03-01", help="ISO cutoff date for time-based filtering (default: 2026-03-01)")
+    parser.add_argument("--chunks-output", default=str(PROJECT_ROOT / "data" / "processed" / "legal_chunks_to_embed.jsonl"), help="Path to export chunk-ready JSONL for Kaggle embedding.")
     parser.add_argument("--report-json", default=str(DEFAULT_REPORT_JSON))
     parser.add_argument("--report-md", default=str(DEFAULT_REPORT_MD))
     args = parser.parse_args()
 
     output_path = Path(args.output)
+    chunks_output_path = Path(args.chunks_output)
     report_json_path = Path(args.report_json)
     report_md_path = Path(args.report_md)
     ensure_parent(output_path)
     ensure_parent(report_json_path)
     ensure_parent(report_md_path)
 
-    report = run_filter(dataset_name=args.dataset, output_path=output_path, limit=args.limit)
+    cutoff = date.fromisoformat(args.cutoff_date)
+    report = run_filter(
+        dataset_name=args.dataset,
+        output_path=output_path,
+        limit=args.limit,
+        cutoff=cutoff,
+        chunks_output_path=chunks_output_path,
+    )
     write_json(report_json_path, report)
     report_md_path.write_text(_render_markdown_report(report), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))

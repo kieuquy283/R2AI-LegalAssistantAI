@@ -77,6 +77,10 @@ def _make_chunk(node: Dict[str, object], document: Dict[str, object], content: s
         "prev_chunk_id": None,
         "next_chunk_id": None,
         "start_char": node.get("start_char"),
+        # Time-based metadata from document
+        "effective_date": document.get("effective_date"),
+        "expiry_date": document.get("expiry_date"),
+        "status": document.get("status"),
     }
 
 
@@ -105,6 +109,10 @@ def _build_context_chunk(article_node: Dict[str, object], document: Dict[str, ob
         "source_url": article_node["source_url"],
         "child_chunk_ids": child_chunk_ids,
         "parent_id": article_node.get("parent_id"),
+        # Time-based metadata from document
+        "effective_date": document.get("effective_date"),
+        "expiry_date": document.get("expiry_date"),
+        "status": document.get("status"),
     }
 
 
