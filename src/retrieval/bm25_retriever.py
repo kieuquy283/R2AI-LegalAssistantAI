@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import os
+import pickle
 import re
 import unicodedata
+import zlib
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -12,10 +17,46 @@ from src.ingestion.common import read_jsonl
 from rag.modules.retrieval.utils import tokenize_for_bm25
 
 
+# Try orjson for faster JSON parsing
+try:
+    import orjson
+    _has_orjson = True
+except Exception:
+    _has_orjson = False
+
+
+def _fast_jsonl_read(path: Path) -> list[dict[str, Any]]:
+    """Read JSONL with orjson if available for faster parsing."""
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        if _has_orjson:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rows.append(orjson.loads(line))
+                except Exception:
+                    rows.append(json.loads(line))
+        else:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                rows.append(json.loads(line))
+    return rows
+
+
 def _normalize_text(text: str) -> str:
     lowered = (text or "").lower().replace("đ", "d").replace("Đ", "d")
     normalized = unicodedata.normalize("NFD", lowered)
     return "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+
+
+def _file_hash(path: Path) -> str:
+    """Return a fast hash of file size + mtime for cache invalidation."""
+    stat = path.stat()
+    return hashlib.md5(f"{stat.st_size}:{stat.st_mtime}".encode()).hexdigest()[:16]
 
 
 class _FastBM25:
@@ -37,7 +78,8 @@ class _FastBM25:
 
     def get_scores(self, query_tokens: Sequence[str]) -> dict[int, float]:
         scores: dict[int, float] = defaultdict(float)
-        total_docs = max(len(self.corpus_tokens), 1)
+        total_docs = getattr(self, 'num_docs', len(getattr(self, 'corpus_tokens', [])))
+        total_docs = max(total_docs, 1)
         for token in query_tokens:
             postings = self.postings.get(token)
             if not postings:
@@ -54,10 +96,135 @@ class _FastBM25:
 class BM25Retriever:
     def __init__(self, *, chunks_path: str | Path | None = None) -> None:
         self.chunks_path = Path(chunks_path or self._default_chunks_path())
-        self.rows = read_jsonl(self.chunks_path)
-        self.chunk_ids = [str(row.get("chunk_id") or "") for row in self.rows]
-        corpus_tokens = [tokenize_for_bm25(_normalize_text(self._combined_text(row))) for row in self.rows]
-        self.bm25 = _FastBM25(corpus_tokens)
+        self._rows: list[dict[str, Any]] | None = None
+        self._bm25: _FastBM25 | None = None
+        self._cache_path = Path(os.getenv("R2AI_CACHE_DIR", "data/cache")) / "bm25_cache.pkl"
+        self._cache_loaded = False
+        self._sqlite_db_path = Path(os.getenv("R2AI_CACHE_DIR", "data/cache")) / "chunks.db"
+        self._sqlite_conn: Any | None = None
+        self._use_sqlite = self._sqlite_db_path.exists()
+        if self._use_sqlite:
+            print(f"[BM25] SQLite available: {self._sqlite_db_path}")
+        else:
+            print(f"[BM25] SQLite not found, will use JSONL: {self._sqlite_db_path}")
+
+    def _ensure_cache_dir(self) -> None:
+        self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _get_sqlite_rows(self, indices: list[int]) -> dict[int, dict[str, Any]]:
+        """Fetch rows by index from SQLite. Returns dict mapping index -> row."""
+        if not self._sqlite_conn:
+            import sqlite3
+            self._sqlite_conn = sqlite3.connect(self._sqlite_db_path)
+            self._sqlite_conn.row_factory = sqlite3.Row
+        
+        # Batch query for performance
+        placeholders = ",".join("?" for _ in indices)
+        cursor = self._sqlite_conn.execute(
+            f"SELECT * FROM chunks WHERE row_idx IN ({placeholders})",
+            indices,
+        )
+        rows = {}
+        for row in cursor:
+            row_dict = dict(row)
+            row_idx = row_dict["row_idx"]
+            # Parse metadata JSON
+            metadata = row_dict.get("metadata")
+            if metadata:
+                try:
+                    row_dict["metadata"] = json.loads(metadata)
+                except Exception:
+                    row_dict["metadata"] = {}
+            rows[row_idx] = row_dict
+        return rows
+
+    def _try_load_cache(self) -> bool:
+        """Try to load BM25 index from disk cache. Returns True if successful."""
+        if not self._cache_path.exists():
+            return False
+        if not self.chunks_path.exists():
+            return False
+        try:
+            current_hash = _file_hash(self.chunks_path)
+            with open(self._cache_path, "rb") as f:
+                data = pickle.loads(zlib.decompress(f.read()))
+            if data.get("file_hash") != current_hash:
+                print(f"[BM25] Cache stale (hash mismatch), rebuilding...")
+                return False
+            # Only load index data, not full rows (rows will be loaded from SQLite on demand)
+            self._bm25 = _FastBM25.__new__(_FastBM25)
+            self._bm25.num_docs = data["num_docs"]
+            self._bm25.doc_lengths = data["doc_lengths"]
+            self._bm25.avgdl = data["avgdl"]
+            self._bm25.k1 = data["k1"]
+            self._bm25.b = data["b"]
+            self._bm25.doc_freq = data["doc_freq"]
+            self._bm25.postings = defaultdict(list, data["postings"])
+            self._cache_loaded = True
+            print(f"[BM25] Loaded cached index: {self._bm25.num_docs} docs, {len(self._bm25.doc_freq)} terms from {self._cache_path}")
+            return True
+        except Exception as exc:
+            print(f"[BM25] Cache load failed: {exc}. Will rebuild.")
+            return False
+
+    def _save_cache(self) -> None:
+        """Save BM25 index to disk cache."""
+        if self._bm25 is None:
+            return
+        self._ensure_cache_dir()
+        try:
+            data = {
+                "file_hash": _file_hash(self.chunks_path),
+                "num_docs": len(self._bm25.corpus_tokens) if hasattr(self._bm25, 'corpus_tokens') else getattr(self._bm25, 'num_docs', 0),
+                "doc_lengths": self._bm25.doc_lengths,
+                "avgdl": self._bm25.avgdl,
+                "k1": self._bm25.k1,
+                "b": self._bm25.b,
+                "doc_freq": self._bm25.doc_freq,
+                "postings": dict(self._bm25.postings),
+            }
+            compressed = zlib.compress(pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL))
+            with open(self._cache_path, "wb") as f:
+                f.write(compressed)
+            cache_size_mb = len(compressed) / 1024 / 1024
+            print(f"[BM25] Saved cached index ({cache_size_mb:.1f} MB) to {self._cache_path}")
+        except Exception as exc:
+            print(f"[BM25] Cache save failed: {exc}")
+
+    def preload(self) -> None:
+        """Trigger eager loading of BM25 index. Call at startup for pre-warm."""
+        import time
+        t0 = time.perf_counter()
+        
+        if self._cache_loaded:
+            return
+        
+        # Load BM25 index only (no rows needed with SQLite)
+        if not self._cache_loaded:
+            self._try_load_cache()
+        
+        if self._bm25 is None:
+            # Build from scratch
+            print(f"[BM25] Building index from {self.chunks_path}...")
+            _ = self.bm25  # Trigger property load (reads rows as side effect)
+            self._save_cache()
+        
+        t1 = time.perf_counter()
+        print(f"[BM25] Preload: {t1-t0:.2f}s")
+
+    @property
+    def rows(self) -> list[dict[str, Any]]:
+        # Fallback to JSONL if SQLite not available
+        if self._rows is None:
+            self._rows = _fast_jsonl_read(self.chunks_path)
+        return self._rows
+
+    @property
+    def bm25(self) -> _FastBM25:
+        if self._bm25 is None:
+            corpus_tokens = [tokenize_for_bm25(_normalize_text(self._combined_text(row))) for row in self.rows]
+            self._bm25 = _FastBM25(corpus_tokens)
+        return self._bm25
 
     @staticmethod
     def _default_chunks_path() -> Path:
@@ -97,17 +264,44 @@ class BM25Retriever:
         return [(value - minimum) / (maximum - minimum) for value in values]
 
     def search(self, query: str, *, top_k: int, preferred_domains: Sequence[str] | None = None) -> list[dict[str, Any]]:
+        # Early exit for empty or whitespace-only query
+        if not query or not query.strip():
+            return []
+        
         query_tokens = tokenize_for_bm25(_normalize_text(query))
         if not query_tokens:
             return []
+        
         raw_scores = self.bm25.get_scores(query_tokens)
-        ranked = sorted(raw_scores.items(), key=lambda item: item[1], reverse=True)[: max(top_k * 3, top_k)]
+        if not raw_scores:
+            return []
+        
+        # Reduced multiplier from 3 to 2 for faster search
+        ranked = sorted(raw_scores.items(), key=lambda item: item[1], reverse=True)[: max(top_k * 2, top_k)]
         normalized = self._normalize_scores([float(score) for _idx, score in ranked])
+        
+        # Get row indices we need
+        needed_indices = [idx for (idx, _) in ranked]
+        
+        # Load rows efficiently: SQLite random access or fallback to JSONL
+        if self._use_sqlite and self._cache_loaded:
+            # Use SQLite for random access (only load needed rows)
+            sqlite_rows = self._get_sqlite_rows(needed_indices)
+        else:
+            # Fallback: load all rows from JSONL
+            sqlite_rows = None
+        
         candidates: list[dict[str, Any]] = []
         for (idx, _score), normalized_score in zip(ranked, normalized, strict=True):
-            if idx >= len(self.rows):
-                continue
-            row = dict(self.rows[idx])
+            if sqlite_rows is not None:
+                row = sqlite_rows.get(idx)
+                if row is None:
+                    continue
+            else:
+                if idx >= len(self.rows):
+                    continue
+                row = dict(self.rows[idx])
+            
             if not self._allowed_domain(row, preferred_domains):
                 continue
             candidates.append(

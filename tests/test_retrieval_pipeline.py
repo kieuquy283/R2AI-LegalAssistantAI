@@ -1,4 +1,5 @@
 import unittest
+import os
 from unittest.mock import patch
 
 from src.retrieval.retrieval_pipeline import RetrievalPipeline
@@ -50,8 +51,16 @@ class TestRetrievalPipeline(unittest.TestCase):
     @patch("src.retrieval.retrieval_pipeline.ContextExpander", side_effect=lambda retriever=None: _FakeExpander(retriever=retriever))
     @patch("src.retrieval.retrieval_pipeline.HybridRetriever", return_value=_FakeRetriever())
     def test_pipeline_includes_confidence_and_escalated_route(self, *_mocks) -> None:
-        pipeline = RetrievalPipeline()
-        result = pipeline.run("Khong gop du von dieu le dung han thi bi phat gi?")
+        previous = os.environ.get("RETRIEVAL_BACKEND")
+        os.environ["RETRIEVAL_BACKEND"] = "faiss"
+        try:
+            pipeline = RetrievalPipeline()
+            result = pipeline.run("Khong gop du von dieu le dung han thi bi phat gi?")
+        finally:
+            if previous is None:
+                os.environ.pop("RETRIEVAL_BACKEND", None)
+            else:
+                os.environ["RETRIEVAL_BACKEND"] = previous
         self.assertIn("confidence_result", result)
         self.assertFalse(result["confidence_result"]["is_confident"])
         self.assertEqual(result["route"], "CROSS_DOMAIN_CONTEXT")

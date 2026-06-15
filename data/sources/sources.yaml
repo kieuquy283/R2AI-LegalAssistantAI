@@ -33,6 +33,17 @@ allowed_domains:
   - civil_commercial_law
   - accounting_law
   - ip_law
+  - trade_law
+  - customs_law
+  - construction_law
+  - transportation_law
+  - education_law
+  - health_law
+  - banking_law
+  - securities_law
+  - environment_law
+  - procurement_law
+  - land_law
 
 sources:
   # =========================
@@ -89,6 +100,525 @@ sources:
         - "tin tức"
         - "bình luận"
         - "dịch vụ tư vấn"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  # =========================
+  # EXPANSION DOMAIN SOURCES
+  # =========================
+
+  - id: "luatvietnam_trade_law_search"
+    name: "LuatVietnam - Tim kiem thuong mai"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "trade_law"
+    related_domains:
+      - "civil_commercial_law"
+    subdomains:
+      - "commercial_contract"
+      - "goods_trade"
+      - "service_trade"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=luat+thuong+mai+doanh+nghiep&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "thuong mai"
+        - "hop dong thuong mai"
+        - "mua ban hang hoa"
+        - "doanh nghiep"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_customs_law_search"
+    name: "LuatVietnam - Tim kiem hai quan"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "customs_law"
+    related_domains:
+      - "tax_law"
+      - "trade_law"
+    subdomains:
+      - "import_export"
+      - "customs_procedure"
+      - "duty_and_tariff"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=hai+quan+thu+tuc+hai+quan+xuat+nhap+khau&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "hai quan"
+        - "thu tuc hai quan"
+        - "xuat nhap khau"
+        - "thue xuat khau"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_construction_law_search"
+    name: "LuatVietnam - Tim kiem xay dung"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "construction_law"
+    subdomains:
+      - "construction_permit"
+      - "construction_project"
+      - "construction_contract"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=xay+dung+giay+phep+xay+dung+cong+trinh&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "xay dung"
+        - "giay phep xay dung"
+        - "cong trinh"
+        - "quy hoach xay dung"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_transportation_law_search"
+    name: "LuatVietnam - Tim kiem giao thong van tai"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "transportation_law"
+    subdomains:
+      - "road_transport"
+      - "traffic_safety"
+      - "transport_business"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=giao+thong+van+tai+duong+bo&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "giao thong van tai"
+        - "duong bo"
+        - "an toan giao thong"
+        - "phuong tien giao thong"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_education_law_search"
+    name: "LuatVietnam - Tim kiem giao duc dao tao"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "education_law"
+    subdomains:
+      - "education_institution"
+      - "training_policy"
+      - "school_governance"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=giao+duc+dao+tao+co+so+giao+duc&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "giao duc"
+        - "dao tao"
+        - "co so giao duc"
+        - "truong hoc"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_health_law_search"
+    name: "LuatVietnam - Tim kiem y te"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "health_law"
+    subdomains:
+      - "medical_service"
+      - "hospital_management"
+      - "medical_business"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=y+te+kham+chua+benh&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "y te"
+        - "kham chua benh"
+        - "benh vien"
+        - "co so y te"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_banking_law_search"
+    name: "LuatVietnam - Tim kiem ngan hang"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "banking_law"
+    subdomains:
+      - "credit_institution"
+      - "payment_services"
+      - "banking_compliance"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=ngan+hang+hoat+dong+ngan+hang&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "ngan hang"
+        - "hoat dong ngan hang"
+        - "tin dung"
+        - "the chap"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_securities_law_search"
+    name: "LuatVietnam - Tim kiem chung khoan"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "securities_law"
+    subdomains:
+      - "public_company"
+      - "stock_market"
+      - "securities_business"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=chung+khoan+cong+ty+chung+khoan&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "chung khoan"
+        - "cong ty chung khoan"
+        - "phat hanh co phieu"
+        - "thi truong chung khoan"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_environment_law_search"
+    name: "LuatVietnam - Tim kiem moi truong"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "environment_law"
+    subdomains:
+      - "environment_protection"
+      - "environment_assessment"
+      - "waste_management"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=bao+ve+moi+truong+danh+gia+tac+dong+moi+truong&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "bao ve moi truong"
+        - "danh gia tac dong moi truong"
+        - "chat thai"
+        - "moi truong"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_procurement_law_search"
+    name: "LuatVietnam - Tim kiem dau thau"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "procurement_law"
+    subdomains:
+      - "public_procurement"
+      - "bidding_process"
+      - "contractor_selection"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=dau+thau+lua+chon+nha+thau&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "dau thau"
+        - "lua chon nha thau"
+        - "ho so moi thau"
+        - "moi thau"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
     compliance:
       public_content_only: true
       no_login: true
@@ -369,6 +899,196 @@ sources:
       exclude_keywords:
         - "tin tức"
         - "bình luận"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+
+  # ============================
+  # SATELLITE DOMAIN: LAND LAW
+  # ============================
+
+  - id: "luatvietnam_land_law_search"
+    name: "LuatVietnam - Tim kiem dat dai"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "land_law"
+    subdomains:
+      - "land_use"
+      - "land_lease"
+      - "land_allocation"
+      - "land_certificate"
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=dat+dai+thue+dat+su+dung+dat+doanh+nghiep&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "medium"
+    crawl_frequency: "weekly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 20
+    extraction:
+      output_formats:
+        - "raw_html"
+        - "markdown"
+      metadata_fields:
+        - "doc_title"
+        - "doc_number"
+        - "doc_type"
+        - "issuing_body"
+        - "issue_date"
+        - "effective_date"
+        - "status"
+        - "source_url"
+    legal_scope:
+      include_keywords:
+        - "dat dai"
+        - "thue dat"
+        - "su dung dat"
+        - "quyen su dung dat"
+        - "doanh nghiep"
+      exclude_keywords:
+        - "tin tuc"
+        - "binh luan"
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  # ==========================================
+  # HIGH PRIORITY EXPANSION: CORE LAWS 2020-2024
+  # ==========================================
+
+  - id: "luatvietnam_core_business_law_2020"
+    name: "LuatVietnam - Luật Doanh nghiệp 2020 và văn bản hướng dẫn"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "business_law"
+    subdomains: ["company_establishment", "capital_contribution", "company_governance"]
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=luat+doanh+nghiep+2020+hoac+nghi+dinh+huong+dan&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "critical"
+    crawl_frequency: "monthly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 15
+    extraction:
+      output_formats: ["raw_html", "markdown"]
+      metadata_fields: ["doc_title", "doc_number", "doc_type", "issuing_body", "issue_date", "effective_date", "status", "source_url"]
+    legal_scope:
+      include_keywords: ["Luật Doanh nghiệp", "Nghị định", "Thông tư hướng dẫn", "công ty", "vốn điều lệ"]
+      exclude_keywords: ["tỉnh", "thành phố", "UBND", "Sở", "quyết định của chủ tịch"]
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_core_labor_law_2019"
+    name: "LuatVietnam - Bộ luật Lao động 2019 và văn bản hướng dẫn"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "labor_law"
+    subdomains: ["employment_contract", "salary", "probation", "termination"]
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=bo+luat+lao+dong+2019+hoac+nghi+dinh+huong+dan&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "critical"
+    crawl_frequency: "monthly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 15
+    extraction:
+      output_formats: ["raw_html", "markdown"]
+      metadata_fields: ["doc_title", "doc_number", "doc_type", "issuing_body", "issue_date", "effective_date", "status", "source_url"]
+    legal_scope:
+      include_keywords: ["Bộ luật Lao động", "Nghị định", "Thông tư", "hợp đồng lao động", "tiền lương", "người lao động"]
+      exclude_keywords: ["tỉnh", "thành phố", "UBND", "Sở", "quyết định của chủ tịch"]
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_core_tax_law"
+    name: "LuatVietnam - Luật Quản lý thuế và các luật thuế hiện hành"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "tax_law"
+    subdomains: ["tax_registration", "e_invoice", "vat", "cit"]
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=luat+quan+ly+thue+hoac+luat+thue+gia+tri+gia+tang+hoac+luat+thue+thu+nhap+doanh+nghiep&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "critical"
+    crawl_frequency: "monthly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 15
+    extraction:
+      output_formats: ["raw_html", "markdown"]
+      metadata_fields: ["doc_title", "doc_number", "doc_type", "issuing_body", "issue_date", "effective_date", "status", "source_url"]
+    legal_scope:
+      include_keywords: ["Luật Quản lý thuế", "Luật Thuế giá trị gia tăng", "Luật Thuế thu nhập doanh nghiệp", "Nghị định", "hóa đơn điện tử"]
+      exclude_keywords: ["tỉnh", "thành phố", "UBND", "Sở", "quyết định của chủ tịch"]
+    compliance:
+      public_content_only: true
+      no_login: true
+      no_paywall_bypass: true
+      citation_required: true
+
+  - id: "luatvietnam_core_penalty_2021_2024"
+    name: "LuatVietnam - Nghị định xử phạt vi phạm hành chính mới nhất (2021-2024)"
+    provider: "LuatVietnam"
+    source_type: "search_page"
+    domain: "administrative_penalty"
+    subdomains: ["business_registration_penalty", "tax_penalty", "labor_penalty"]
+    url: "https://luatvietnam.vn/van-ban/tim-van-ban.html?keywords=nghi+dinh+xu+phat+vi+pham+hanh+chinh+trong+linh+vuc+hoac+doanh+nghiep+hoac+lao+dong+hoac+thue&SearchOptions=1&SearchByDate=issueDate"
+    enabled: true
+    priority: "critical"
+    crawl_frequency: "monthly"
+    crawl_strategy:
+      collect_document_links: true
+      link_pattern: "-d1.html"
+      detail_page_required: true
+      download_files: false
+      prefer_html_content: true
+      pagination:
+        enabled: true
+        strategy: "detect_or_manual"
+        max_pages: 15
+    extraction:
+      output_formats: ["raw_html", "markdown"]
+      metadata_fields: ["doc_title", "doc_number", "doc_type", "issuing_body", "issue_date", "effective_date", "status", "source_url"]
+    legal_scope:
+      include_keywords: ["xử phạt vi phạm hành chính", "Nghị định", "doanh nghiệp", "lao động", "thuế", "đăng ký doanh nghiệp"]
+      exclude_keywords: ["tỉnh", "thành phố", "UBND", "Sở", "quyết định của chủ tịch", "huyện", "quận"]
     compliance:
       public_content_only: true
       no_login: true

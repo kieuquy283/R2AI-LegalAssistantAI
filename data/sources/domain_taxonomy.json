@@ -2,15 +2,10 @@
   "business_law": {
     "description": "Core domain for SME and enterprise legal consulting.",
     "keywords": [
-      "doanh nghiệp",
-      "công ty",
-      "thành lập doanh nghiệp",
-      "vốn điều lệ",
-      "góp vốn",
-      "người đại diện theo pháp luật",
-      "đăng ký doanh nghiệp",
-      "cổ phần",
-      "thành viên góp vốn"
+      "doanh nghiệp", "DN", "SME", "công ty", "thành lập doanh nghiệp",
+      "vốn điều lệ", "góp vốn", "người đại diện theo pháp luật",
+      "đăng ký doanh nghiệp", "cổ phần", "thành viên góp vốn",
+      "công ty TNHH", "TNHH", "công ty cổ phần", "CTCP", "doanh nghiệp tư nhân", "DNTN"
     ],
     "subdomains": [
       "company_establishment",
@@ -39,15 +34,9 @@
   "tax_law": {
     "description": "Basic tax obligations for SMEs.",
     "keywords": [
-      "thuế",
-      "hóa đơn",
-      "hóa đơn điện tử",
-      "lệ phí môn bài",
-      "GTGT",
-      "VAT",
-      "TNDN",
-      "TNCN",
-      "kê khai thuế"
+      "thuế", "thuế GTGT", "VAT", "thuế TNDN", "thuế TNCN",
+      "hóa đơn", "hóa đơn điện tử", "lệ phí môn bài", "kê khai thuế",
+      "nộp thuế", "khấu trừ thuế", "hoàn thuế", "quyết toán thuế"
     ],
     "subdomains": [
       "tax_registration",
@@ -61,13 +50,9 @@
   "labor_law": {
     "description": "Employment and internal labor compliance for SMEs.",
     "keywords": [
-      "lao động",
-      "người lao động",
-      "hợp đồng lao động",
-      "lương",
-      "thử việc",
-      "sa thải",
-      "nghỉ việc"
+      "lao động", "NLĐ", "NSDLĐ", "người lao động", "người sử dụng lao động",
+      "hợp đồng lao động", "HĐLĐ", "lương", "tiền lương",
+      "thử việc", "sa thải", "nghỉ việc", "đơn phương chấm dứt hợp đồng", "bồi thường"
     ],
     "subdomains": [
       "employment_contract",
@@ -113,13 +98,9 @@
   "civil_commercial_law": {
     "description": "Contracts, representation, civil and commercial transactions.",
     "keywords": [
-      "hợp đồng",
-      "giao dịch",
-      "ủy quyền",
-      "đại diện",
-      "bồi thường",
-      "phạt vi phạm hợp đồng",
-      "thương mại"
+      "hợp đồng", "HĐ", "giao dịch", "ủy quyền", "đại diện",
+      "bồi thường", "phạt vi phạm hợp đồng", "thương mại",
+      "tranh chấp", "dân sự", "thỏa thuận", "cam kết"
     ],
     "subdomains": [
       "contract",
@@ -155,6 +136,26 @@
       "trademark",
       "copyright",
       "industrial_design"
+    ]
+  },
+  "land_law": {
+    "description": "Land use, land lease, land allocation for SMEs.",
+    "keywords": [
+      "đất đai",
+      "đất",
+      "thuê đất",
+      "sử dụng đất",
+      "giấy chứng nhận quyền sử dụng đất",
+      "quy hoạch đất",
+      "đất sản xuất",
+      "đất kinh doanh",
+      "thuê mặt bằng"
+    ],
+    "subdomains": [
+      "land_use",
+      "land_lease",
+      "land_allocation",
+      "land_certificate"
     ]
   }
 }

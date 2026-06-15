@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from src.evaluation.eval_logger import EvalLogger
 from src.evaluation.evaluate_qa import evaluate_questions, load_questions
@@ -27,7 +29,8 @@ class EvaluationRunnerTests(unittest.TestCase):
     def test_evaluate_questions_writes_summary(self) -> None:
         questions = load_questions("data/evaluation/sample_questions.jsonl")
         self.assertTrue(questions)
-        summary = evaluate_questions(questions[:1], run_id="unit_eval_summary")
+        with patch.dict(os.environ, {"RETRIEVAL_BACKEND": "faiss", "EMBEDDING_BACKEND": "hash"}, clear=False):
+            summary = evaluate_questions(questions[:1], run_id="unit_eval_summary")
         self.assertEqual(summary["total_questions"], 1)
         self.assertGreater(summary["answer_non_empty_rate"], 0)
         summary_path = Path("logs/eval_runs/unit_eval_summary_summary.json")
@@ -52,7 +55,8 @@ class EvaluationRunnerTests(unittest.TestCase):
 
             questions = load_questions(input_path)
             self.assertEqual(len(questions), 2)
-            summary = evaluate_questions(questions[:1], run_id="unit_eval_answers", output_path=output_path)
+            with patch.dict(os.environ, {"RETRIEVAL_BACKEND": "faiss", "EMBEDDING_BACKEND": "hash"}, clear=False):
+                summary = evaluate_questions(questions[:1], run_id="unit_eval_answers", output_path=output_path)
             self.assertEqual(summary["total_questions"], 1)
             payload = json.loads(output_path.read_text(encoding="utf-8"))
             self.assertIsInstance(payload, list)

@@ -14,7 +14,7 @@ class AnswerGenerator:
     def __init__(
         self,
         *,
-        temperature: float = 0.1,
+        temperature: float = 0.05,
         llm_client: LLMClient | None = None,
         prompt_builder: PromptBuilder | None = None,
     ) -> None:
@@ -44,30 +44,62 @@ class AnswerGenerator:
     def _fallback_answer(self, *, contexts: List[Dict[str, object]], citations: List[Dict[str, object]]) -> str:
         if not contexts:
             return (
-                "Chưa đủ thông tin đáng tin cậy trong dữ liệu truy xuất để trả lời dứt điểm câu hỏi này; "
-                "cần bổ sung thêm tình tiết thực tế hoặc diễn đạt truy vấn cụ thể hơn để xác định đúng quy định áp dụng."
+                "1. Kết luận ngắn\n"
+                "Chưa đủ thông tin đáng tin cậy trong dữ liệu truy xuất để trả lời dứt điểm câu hỏi này.\n\n"
+                "2. Căn cứ pháp luật\n"
+                "Không có căn cứ pháp luật cụ thể trong dữ liệu truy xuất.\n\n"
+                "3. Phân tích áp dụng\n"
+                "Cần bổ sung thêm tình tiết thực tế hoặc diễn đạt truy vấn cụ thể hơn để xác định đúng quy định áp dụng.\n\n"
+                "4. Việc SME nên làm\n"
+                "- Kiểm tra lại câu hỏi với thông tin chi tiết hơn.\n"
+                "- Liên hệ cơ quan chức năng hoặc chuyên gia pháp lý để được tư vấn cụ thể."
             )
 
         lead = contexts[0]
         lead_meta = dict(lead.get("metadata") or {})
         snippets: List[str] = []
-        for context in contexts[:2]:
+        doc_titles: List[str] = []
+        for context in contexts[:3]:
+            meta = dict(context.get("metadata") or {})
             text = re.sub(r"\s+", " ", str(context.get("content") or "")).strip()
             if text:
-                snippets.append(text[:280].rstrip(" ,;:"))
+                snippets.append(text[:200].rstrip(" ,;:"))
+            title = str(meta.get("doc_title") or "").strip()
+            if title and title not in doc_titles:
+                doc_titles.append(title)
+        
         analysis = " ".join(snippets).strip()
         if not analysis:
             analysis = "Ngữ liệu truy xuất cho thấy có quy định liên quan nhưng chưa đủ dài để trích xuất thêm chi tiết an toàn."
 
+        citations_text = ""
+        if citations:
+            cite_parts = []
+            for c in citations[:3]:
+                title = str(c.get("doc_title") or "").strip()
+                article = str(c.get("article") or "").strip()
+                if title and article:
+                    cite_parts.append(f"{title}, {article}")
+                elif title:
+                    cite_parts.append(title)
+            if cite_parts:
+                citations_text = "; ".join(cite_parts)
+
         lead_title = str(lead_meta.get("doc_title") or "").strip()
-        if lead_title:
-            return (
-                f"Theo nội dung truy xuất từ {lead_title}, vấn đề này có thể được hiểu như sau: {analysis}. "
-                "Doanh nghiệp nên đối chiếu thêm tình tiết thực tế, thời điểm áp dụng và hồ sơ cụ thể trước khi ra quyết định."
-            )
+        doc_list = "; ".join(doc_titles[:2]) if doc_titles else lead_title
+
         return (
-            f"Theo nội dung truy xuất hiện có, vấn đề này có thể được hiểu như sau: {analysis}. "
-            "Doanh nghiệp nên đối chiếu thêm tình tiết thực tế và hồ sơ cụ thể trước khi áp dụng."
+            f"1. Kết luận ngắn\n"
+            f"Theo nội dung truy xuất từ {doc_list}, có quy định liên quan đến vấn đề này.\n\n"
+            f"2. Căn cứ pháp luật\n"
+            f"{citations_text if citations_text else 'Có quy định liên quan trong các văn bản pháp luật đã truy xuất.'}\n\n"
+            f"3. Phân tích áp dụng\n"
+            f"{analysis}\n\n"
+            f"4. Việc SME nên làm\n"
+            f"- Đối chiếu nội dung trên với tình tiết thực tế của doanh nghiệp.\n"
+            f"- Kiểm tra thời điểm áp dụng và hiệu lực của văn bản pháp luật.\n"
+            f"- Chuẩn bị hồ sơ cụ thể trước khi ra quyết định.\n"
+            f"- Nếu cần, liên hệ chuyên gia pháp lý để được tư vấn chi tiết."
         )
 
     def generate(self, *, query: str, retrieval_result: Dict[str, object], use_llm: bool = True) -> Dict[str, object]:

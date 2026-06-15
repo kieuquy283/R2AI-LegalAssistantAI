@@ -13,13 +13,34 @@ from src.generation.grounding_validator import GroundingValidator
 from src.retrieval.retrieval_pipeline import RetrievalPipeline
 
 
+_LEGAL_QA_PIPELINE_INSTANCE: LegalQAPipeline | None = None
+
+
 class LegalQAPipeline:
+    def __new__(cls) -> LegalQAPipeline:
+        global _LEGAL_QA_PIPELINE_INSTANCE
+        if _LEGAL_QA_PIPELINE_INSTANCE is not None:
+            return _LEGAL_QA_PIPELINE_INSTANCE
+        instance = super().__new__(cls)
+        _LEGAL_QA_PIPELINE_INSTANCE = instance
+        return instance
+
     def __init__(self) -> None:
+        # Prevent re-initialization if singleton already initialized
+        if hasattr(self, "_initialized"):
+            return
+        self._initialized = True
         self.runtime_config = get_retrieval_runtime_config()
         self.retrieval_pipeline = RetrievalPipeline()
         self.answer_generator = AnswerGenerator()
         self.grounding_validator = GroundingValidator()
         self.document_catalog, self.document_title_catalog = self._load_document_catalog()
+
+    @classmethod
+    def reset_singleton(cls) -> None:
+        """Reset singleton instance (useful for testing)."""
+        global _LEGAL_QA_PIPELINE_INSTANCE
+        _LEGAL_QA_PIPELINE_INSTANCE = None
 
     @staticmethod
     def _load_document_catalog() -> tuple[dict[str, dict], dict[str, dict]]:
@@ -323,6 +344,103 @@ class LegalQAPipeline:
                 relaxed.append(context)
         return relaxed
 
+    # Forbidden phrases when context exists - model should NOT say these
+    _FORBIDDEN_PHRASES = [
+        "context không cung cấp",
+        "context khong cung cap",
+        "chưa đủ căn cứ",
+        "chưa đủ thông tin",
+        "thiếu thông tin",
+        "không đủ thông tin",
+        "không đủ căn cứ",
+        "chưa có đủ căn cứ",
+        "không có đủ thông tin",
+        "dữ liệu truy xuất không đủ",
+        "chưa đủ dữ liệu",
+    ]
+
+    _FORBIDDEN_PATTERNS = [
+        re.compile(r"(?i)context\s+(không|khong)\s+(cung cấp|cung cap|có|co)"),
+        re.compile(r"(?i)chưa\s+(đủ|du)\s+(căn cứ|can cu|thông tin|thong tin|dữ liệu|du lieu)"),
+        re.compile(r"(?i)thiếu\s+(thông tin|thong tin|căn cứ|can cu|dữ liệu|du lieu)"),
+        re.compile(r"(?i)không\s+(đủ|du|co| có)\s+(thông tin|thong tin|căn cứ|can cu|dữ liệu|du lieu)"),
+    ]
+
+    def _validate_answer(self, answer_text: str, contexts: list[dict]) -> str:
+        """Check if model incorrectly claims no context when context exists, and verify 4 mandatory sections."""
+        if not contexts:
+            return answer_text
+
+        # 1. Check for 4 mandatory sections
+        required_sections = [
+            r"(?i)1\.\s*kết luận ngắn",
+            r"(?i)2\.\s*căn cứ pháp luật",
+            r"(?i)3\.\s*phân tích áp dụng",
+            r"(?i)4\.\s*việc sme nên làm"
+        ]
+        missing_sections = []
+        for section in required_sections:
+            if not re.search(section, answer_text):
+                missing_sections.append(section)
+
+        if missing_sections:
+            print(f"[QAPipeline] Answer is missing mandatory sections: {missing_sections}. Triggering fallback...")
+            citations = self._build_citation_payload(contexts)
+            return self.answer_generator._fallback_answer(contexts=contexts, citations=citations)
+
+        # 2. Check for forbidden phrases (model claiming no context when context exists)
+        # Only check short answers (<300 chars) or answers that explicitly deny having context
+        if len(answer_text) > 300:
+            # For longer answers, only check explicit forbidden phrases, not patterns
+            answer_lower = answer_text.lower()
+            matched_phrase = None
+            for phrase in self._FORBIDDEN_PHRASES:
+                if phrase in answer_lower:
+                    matched_phrase = phrase
+                    break
+
+            if matched_phrase:
+                print(f"[QAPipeline] Answer contained forbidden phrase '{matched_phrase}' but context exists. Regenerating fallback...")
+                citations = self._build_citation_payload(contexts)
+                return self.answer_generator._fallback_answer(contexts=contexts, citations=citations)
+            return answer_text
+
+        # For short answers, check both phrases and patterns
+        has_forbidden = False
+        matched_phrase = None
+        answer_lower = answer_text.lower()
+        for phrase in self._FORBIDDEN_PHRASES:
+            if phrase in answer_lower:
+                has_forbidden = True
+                matched_phrase = phrase
+                break
+
+        if not has_forbidden:
+            for pattern in self._FORBIDDEN_PATTERNS:
+                if pattern.search(answer_text):
+                    has_forbidden = True
+                    matched_phrase = "pattern_match"
+                    break
+
+        if has_forbidden:
+            print(f"[QAPipeline] Answer contained forbidden phrase '{matched_phrase}' but context exists. Regenerating fallback...")
+            citations = self._build_citation_payload(contexts)
+            return self.answer_generator._fallback_answer(contexts=contexts, citations=citations)
+
+        return answer_text
+
+    def _extract_citations_from_answer(self, answer_text: str) -> list[dict]:
+        """Extract Điều/Khoản/Điểm citations from answer text."""
+        citations = []
+        # Pattern: Điều X, Khoản Y, Điểm Z
+        pattern = re.compile(
+            r"(Điều\s+\d+[a-zA-Z]?\s*(?:,\s*Khoản\s+\d+[a-zA-Z]?)?\s*(?:,\s*Điểm\s+\d+[a-zA-Z]?)?)"
+        )
+        matches = pattern.findall(answer_text)
+        for match in set(matches):
+            citations.append({"citation": match.strip()})
+        return citations
+
     def answer(
         self,
         question: str,
@@ -344,11 +462,20 @@ class LegalQAPipeline:
         relevant_article_details = self._build_relevant_article_details(final_contexts)
 
         answer_text = str(generated.get("answer") or "")
+        
+        # Validate: if context exists but model says no context, regenerate
+        if final_contexts:
+            answer_text = self._validate_answer(answer_text, final_contexts)
+        
+        # Also check old fallback triggers
         if final_contexts and (
             "Chưa đủ căn cứ pháp lý" in answer_text
             or "ChÆ°a Ä‘á»§ cÄƒn cá»© phÃ¡p lÃ½" in answer_text
         ):
             answer_text = self.answer_generator._fallback_answer(contexts=final_contexts, citations=citations)
+
+        # Extract citations from answer text for verification
+        answer_citations = self._extract_citations_from_answer(answer_text)
 
         grounding = None
         if include_grounding:
@@ -376,6 +503,7 @@ class LegalQAPipeline:
             "expanded_contexts": retrieval_result["expanded_contexts"],
             "final_contexts": final_contexts,
             "raw_final_contexts": raw_final_contexts,
+            "answer_citations": answer_citations,
         }
 
 

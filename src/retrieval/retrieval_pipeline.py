@@ -13,13 +13,29 @@ from src.retrieval.hybrid_fusion import fuse_candidates, select_dynamic_contexts
 from src.retrieval.hybrid_retriever import HybridRetriever
 from src.retrieval.legal_exact_search import LegalExactSearch
 from src.retrieval.qdrant_retriever import QdrantRetriever, apply_domain_adjustment
+from src.retrieval.query_expander import expand_query
 from src.retrieval.query_router import route_query
 from src.retrieval.reranker import Reranker
 from src.retrieval.hybrid_reranker import HybridReranker
 
 
+_RETRIEVAL_PIPELINE_INSTANCE: RetrievalPipeline | None = None
+
+
 class RetrievalPipeline:
+    def __new__(cls) -> RetrievalPipeline:
+        global _RETRIEVAL_PIPELINE_INSTANCE
+        if _RETRIEVAL_PIPELINE_INSTANCE is not None:
+            return _RETRIEVAL_PIPELINE_INSTANCE
+        instance = super().__new__(cls)
+        _RETRIEVAL_PIPELINE_INSTANCE = instance
+        return instance
+
     def __init__(self) -> None:
+        # Prevent re-initialization if singleton already initialized
+        if hasattr(self, "_initialized"):
+            return
+        self._initialized = True
         self.runtime_config = get_retrieval_runtime_config()
         self.backend = str(self.runtime_config.retrieval_backend or "faiss").strip().lower()
         self.retriever = None
@@ -36,11 +52,23 @@ class RetrievalPipeline:
             self.exact_search = LegalExactSearch()
             if self._use_hybrid_reranker:
                 self.reranker = HybridReranker()
+            # Pre-load BM25 index at startup to avoid first-query latency
+            try:
+                print("[RetrievalPipeline] Pre-loading BM25 index...")
+                self.bm25_retriever.preload()
+            except Exception as exc:
+                print(f"[RetrievalPipeline] BM25 pre-load failed: {exc}. Will load on first query.")
         else:
             self.retriever = HybridRetriever()
             self.expander = ContextExpander(retriever=self.retriever)
             self.reranker = HybridReranker() if self._use_hybrid_reranker else Reranker()
             self.confidence_checker = ConfidenceChecker()
+
+    @classmethod
+    def reset_singleton(cls) -> None:
+        """Reset singleton instance (useful for testing)."""
+        global _RETRIEVAL_PIPELINE_INSTANCE
+        _RETRIEVAL_PIPELINE_INSTANCE = None
 
     def _route_result_for(self, route: str, domains: list[str], reason: str) -> Dict[str, object]:
         needs_parent = route in {"PARENT_CONTEXT", "LEGAL_GRAPH_CONTEXT", "CROSS_DOMAIN_CONTEXT", "MULTI_DOMAIN_COMPLEX"}
@@ -108,30 +136,36 @@ class RetrievalPipeline:
     def _run_qdrant(self, query: str) -> Dict[str, object]:
         import time
         t_total = time.perf_counter()
-        
+
         t0 = time.perf_counter()
         initial_route = route_query(query, seed_chunks=[])
         preferred_domains = list(initial_route.get("domains") or [])
         t_route = time.perf_counter() - t0
-        
+
+        # Query Expansion: Add full legal terms for abbreviations to improve BM25/Vector match
+        expanded_query = expand_query(query)
+        if expanded_query != query:
+            print(f"[Retrieval] Query expanded: '{query}' -> '{expanded_query}'")
+
         t0 = time.perf_counter()
-        dense_candidates = self.qdrant_retriever.search(query, preferred_domains=preferred_domains) if self.qdrant_retriever else []
+        # Use expanded_query for retrieval to boost recall
+        dense_candidates = self.qdrant_retriever.search(expanded_query, preferred_domains=preferred_domains) if self.qdrant_retriever else []
         t_dense = time.perf_counter() - t0
-        
+
         t0 = time.perf_counter()
         sparse_candidates = (
-            self.bm25_retriever.search(query, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
+            self.bm25_retriever.search(expanded_query, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
             if self.bm25_retriever
             else []
         )
         t_sparse = time.perf_counter() - t0
-        
+
         t0 = time.perf_counter()
         # Skip exact search if disabled or query has no legal ref pattern
         skip_exact = self.runtime_config.candidate_k_title <= 0
         if not skip_exact and self.exact_search:
             from src.retrieval.legal_exact_search import LEGAL_REF_PATTERN
-            skip_exact = not LEGAL_REF_PATTERN.search(query)
+            skip_exact = not LEGAL_REF_PATTERN.search(query) # Keep original query for exact legal ref matching
         exact_candidates = (
             self.exact_search.search(query, top_k=self.runtime_config.candidate_k_title, preferred_domains=preferred_domains)
             if self.exact_search and not skip_exact

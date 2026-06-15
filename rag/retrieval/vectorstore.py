@@ -14,6 +14,11 @@ from sentence_transformers import SentenceTransformer
 
 from rag.config.retrieval import DEFAULT_INDEX_DIR, EMBEDDING_BACKEND as DEFAULT_EMBEDDING_BACKEND, LOCAL_EMBEDDING_MODEL
 
+# Ensure cache directories point to D: drive to avoid C: disk full
+os.environ.setdefault("HF_HOME", r"D:\huggingface_cache")
+os.environ.setdefault("HF_HUB_CACHE", r"D:\huggingface_cache\hub")
+os.environ.setdefault("TRANSFORMERS_CACHE", r"D:\huggingface_cache\transformers")
+os.environ.setdefault("TORCH_HOME", r"D:\huggingface_cache\torch")
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 

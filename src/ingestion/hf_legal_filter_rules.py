@@ -174,6 +174,56 @@ RULE_GROUPS = [
             "hai quan",
         ],
     },
+    {
+        "matched_group": "land_law",
+        "priority": 1,
+        "reason": "matched land use/lease legal phrases",
+        "target_domains": ["land_law", "land_use", "land_lease"],
+        "exact_keywords": [
+            "luat dat dai",
+            "nghi dinh 43/2014/nd-cp",
+            "nghi dinh 45/2014/nd-cp",
+            "thue dat",
+            "su dung dat",
+            "quyen su dung dat",
+            "giay chung nhan quyen su dung dat",
+            "giao dat",
+            "cho thue dat",
+            "thu hoi dat",
+        ],
+        "weak_keywords": [
+            "dat dai",
+            "mat bang",
+            "quy hoach dat",
+            "dat san xuat",
+            "dat kinh doanh",
+            "tien thue dat",
+        ],
+    },
+    {
+        "matched_group": "administrative_penalty",
+        "priority": 1,
+        "reason": "matched administrative penalty legal phrases",
+        "target_domains": ["administrative_penalty", "penalty", "fine"],
+        "exact_keywords": [
+            "xuc phat vi pham hanh chinh",
+            "nghi dinh 12/2022/nd-cp",
+            "nghi dinh 125/2020/nd-cp",
+            "muc phat",
+            "khung phat",
+            "bi phat",
+            "phat tien",
+            "phat hanh chinh",
+        ],
+        "weak_keywords": [
+            "xuc phat",
+            "vi pham",
+            "hanh chinh",
+            "phat",
+            "tien phat",
+            "muc phat tien",
+        ],
+    },
 ]
 
 EXCLUDE_KEYWORDS = [
@@ -239,6 +289,11 @@ def _is_noise_document(title_norm: str, content_norm: str) -> bool:
         "so huu tri tue",
         "luat dau thau",
         "hai quan",
+        "luat dat dai",
+        "thue dat",
+        "su dung dat",
+        "xuc phat vi pham hanh chinh",
+        "muc phat",
     ]
     return not any(item in f"{title_norm}\n{content_norm}" for item in core)
 

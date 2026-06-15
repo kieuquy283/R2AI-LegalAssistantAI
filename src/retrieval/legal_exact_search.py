@@ -30,16 +30,59 @@ class LegalExactSearch:
         articles_path: str | Path | None = None,
         chunks_path: str | Path | None = None,
     ) -> None:
+        self._documents_path = documents_path or self._default_path("merged_documents.jsonl", "documents.jsonl")
+        self._articles_path = articles_path or self._default_path("merged_legal_nodes.jsonl", "legal_nodes.jsonl")
+        self._chunks_path = chunks_path or self._default_path("merged_chunks.jsonl", "chunks.jsonl")
+        self._documents: list[dict] | None = None
+        self._articles: list[dict] | None = None
+        self._chunks: list[dict] | None = None
+        self._doc_index: dict[str, list[dict]] | None = None
+        self._article_index: dict[str, list[dict]] | None = None
+        self._chunk_index: dict[str, list[dict]] | None = None
+        self._loaded = False
+
+    def _ensure_loaded(self) -> None:
+        if self._loaded:
+            return
         t0 = time.perf_counter()
-        self.documents = read_jsonl(documents_path or self._default_path("merged_documents.jsonl", "documents.jsonl"))
-        self.articles = read_jsonl(articles_path or self._default_path("merged_legal_nodes.jsonl", "legal_nodes.jsonl"))
-        self.chunks = read_jsonl(chunks_path or self._default_path("merged_chunks.jsonl", "chunks.jsonl"))
+        self._documents = read_jsonl(self._documents_path)
+        self._articles = read_jsonl(self._articles_path)
+        self._chunks = read_jsonl(self._chunks_path)
         
         # Build dictionary indexes for O(1) lookup
-        self._doc_index = self._build_index(self.documents)
-        self._article_index = self._build_index(self.articles)
-        self._chunk_index = self._build_index(self.chunks)
-        print(f"[LegalExactSearch] Built indexes in {time.perf_counter() - t0:.3f}s (docs={len(self.documents)}, articles={len(self.articles)}, chunks={len(self.chunks)})")
+        self._doc_index = self._build_index(self._documents)
+        self._article_index = self._build_index(self._articles)
+        self._chunk_index = self._build_index(self._chunks)
+        self._loaded = True
+        print(f"[LegalExactSearch] Built indexes in {time.perf_counter() - t0:.3f}s (docs={len(self._documents)}, articles={len(self._articles)}, chunks={len(self._chunks)})")
+
+    @property
+    def documents(self) -> list[dict]:
+        self._ensure_loaded()
+        return self._documents or []
+
+    @property
+    def articles(self) -> list[dict]:
+        self._ensure_loaded()
+        return self._articles or []
+
+    @property
+    def chunks(self) -> list[dict]:
+        self._ensure_loaded()
+        return self._chunks or []
+
+    def get_doc_index(self) -> dict[str, list[dict]]:
+        self._ensure_loaded()
+        return self._doc_index or {}
+
+    def get_article_index(self) -> dict[str, list[dict]]:
+        self._ensure_loaded()
+        return self._article_index or {}
+
+    def get_chunk_index(self) -> dict[str, list[dict]]:
+        self._ensure_loaded()
+        return self._chunk_index or {}
+
 
     @staticmethod
     def _default_path(merged_name: str, base_name: str) -> Path:
@@ -145,7 +188,7 @@ class LegalExactSearch:
         # Lookup by legal reference (doc_number)
         for ref in legal_refs:
             ref_lower = ref.lower()
-            for level, index in (("doc", self._doc_index), ("article", self._article_index), ("chunk", self._chunk_index)):
+            for level, index in (("doc", self.get_doc_index()), ("article", self.get_article_index()), ("chunk", self.get_chunk_index())):
                 if ref_lower in index:
                     for row in index[ref_lower]:
                         row_id = id(row)
@@ -161,7 +204,7 @@ class LegalExactSearch:
         # Lookup by article reference
         for article in articles:
             article_lower = article.lower()
-            for level, index in (("article", self._article_index), ("chunk", self._chunk_index), ("doc", self._doc_index)):
+            for level, index in (("article", self.get_article_index()), ("chunk", self.get_chunk_index()), ("doc", self.get_doc_index())):
                 if article_lower in index:
                     for row in index[article_lower]:
                         row_id = id(row)

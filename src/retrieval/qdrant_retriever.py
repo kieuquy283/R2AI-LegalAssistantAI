@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Any, Sequence
 
+from qdrant_client.models import Filter, FieldCondition, MatchAny
 from rag.config.runtime import RetrievalRuntimeConfig, get_retrieval_runtime_config
 from rag.retrieval.vectorstore import get_embeddings
 from src.retrieval.qdrant_store import QdrantStore
@@ -365,30 +366,70 @@ class QdrantRetriever:
     def _allowed_domain(self, payload: dict[str, Any], preferred_domains: Sequence[str] | None) -> bool:
         return True
 
-    def _query_collection(self, collection_name: str, query_vector: list[float], limit: int) -> list[Any]:
+    def _query_collection(
+        self, 
+        collection_name: str, 
+        query_vector: list[float], 
+        limit: int,
+        preferred_domains: Sequence[str] | None = None,
+    ) -> list[Any]:
+        # Skip if collection does not exist
+        if not self._check_collection_exists(collection_name):
+            return []
+        
+        # Build Qdrant filter for domain matching if preferred_domains is provided
+        qdrant_filter = None
+        if preferred_domains:
+            qdrant_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="domain",
+                        match=MatchAny(any=list(preferred_domains))
+                    )
+                ]
+            )
+
         try:
             return list(
                 self.store.client.search(
                     collection_name=collection_name,
                     query_vector=query_vector,
                     limit=limit,
+                    query_filter=qdrant_filter,
                     with_payload=True,
                     with_vectors=False,
                 )
             )
         except Exception:
-            result = self.store.client.query_points(
-                collection_name=collection_name,
-                query=query_vector,
-                limit=limit,
-                with_payload=True,
-                with_vectors=False,
-            )
-            return list(getattr(result, "points", []) or [])
+            try:
+                result = self.store.client.query_points(
+                    collection_name=collection_name,
+                    query=query_vector,
+                    limit=limit,
+                    query_filter=qdrant_filter,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                return list(getattr(result, "points", []) or [])
+            except Exception as exc:
+                _log.warning("Query failed for collection '%s': %s", collection_name, exc)
+                return []
 
     def _make_candidate(self, *, level: str, hit: Any, query: str) -> dict[str, Any]:
-        payload = dict(getattr(hit, "payload", None) or {})
-        raw_dense_score = float(getattr(hit, "score", None) or 0.0)
+        # Handle both Qdrant v0.x (direct payload) and v1.x (nested payload)
+        raw_payload = getattr(hit, "payload", None) or {}
+        if isinstance(raw_payload, dict) and "payload" in raw_payload:
+            payload = dict(raw_payload["payload"])
+        else:
+            payload = dict(raw_payload)
+        
+        # Extract score from Qdrant hit (try multiple attribute names)
+        raw_dense_score = 0.0
+        for attr in ("score", "vector_distance", "distance"):
+            val = getattr(hit, attr, None)
+            if val is not None:
+                raw_dense_score = float(val)
+                break
         article = str(payload.get("article") or "").strip()
         candidate_id = str(
             payload.get("chunk_id")
@@ -453,8 +494,9 @@ class QdrantRetriever:
             )
         candidates: list[dict[str, Any]] = []
         for level, collection_name, limit in specs:
-            for hit in self._query_collection(collection_name, query_vector, limit):
+            for hit in self._query_collection(collection_name, query_vector, limit, preferred_domains):
                 payload = dict(getattr(hit, "payload", None) or {})
+                # Keep Python-level fallback check just in case
                 if not self._allowed_domain(payload, preferred_domains):
                     continue
                 candidates.append(self._make_candidate(level=level, hit=hit, query=query))

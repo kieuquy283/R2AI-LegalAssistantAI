@@ -32,6 +32,7 @@ class _FakeQAPipeline:
                 ],
                 "relevant_doc_details": [
                     {
+                        "doc_id": "59/2020/QH14",
                         "doc_title": "Luat Doanh nghiep 2020",
                         "source_url": "https://example.com/luat-doanh-nghiep",
                         "citation": "Luat Doanh nghiep 2020, Dieu 17",
@@ -39,6 +40,7 @@ class _FakeQAPipeline:
                 ],
                 "relevant_article_details": [
                     {
+                        "doc_id": "59/2020/QH14",
                         "doc_title": "Luat Doanh nghiep 2020",
                         "article": "Dieu 17",
                         "clause": None,
@@ -123,6 +125,8 @@ class EvaluateQAExportResultsTests(unittest.TestCase):
             self.assertEqual(payload[2]["id"], 3)
             self.assertTrue(payload[0]["relevant_docs"])
             self.assertTrue(payload[0]["relevant_articles"])
+            self.assertEqual(payload[0]["relevant_docs"][0], "59/2020/QH14|Luat Doanh nghiep 2020")
+            self.assertEqual(payload[0]["relevant_articles"][0], "59/2020/QH14|Luat Doanh nghiep 2020|Dieu 17")
             self.assertEqual(payload[1]["relevant_docs"], [])
             self.assertEqual(payload[1]["relevant_articles"], [])
 
@@ -135,6 +139,52 @@ class EvaluateQAExportResultsTests(unittest.TestCase):
                 load_questions(path)
 
             self.assertIn("missing question text", str(ctx.exception))
+
+    def test_exports_refs_from_top_level_context_fields_when_metadata_missing(self) -> None:
+        class _TopLevelContextQAPipeline:
+            def answer(self, question: str) -> dict:
+                return {
+                    "route": "PARENT_CONTEXT",
+                    "domains": ["tax_law"],
+                    "answer": "Có căn cứ về hóa đơn điện tử có mã của cơ quan thuế.",
+                    "citations": [],
+                    "relevant_doc_details": [],
+                    "relevant_article_details": [],
+                    "final_contexts": [
+                        {
+                            "chunk_id": "ctx-1",
+                            "doc_id": "119/2018/NĐ-CP",
+                            "doc_title": "Nghị định 119/2018/NĐ-CP quy định về hóa đơn điện tử khi bán hàng hóa, cung cấp dịch vụ",
+                            "article": "Điều 19",
+                            "citation": "Điều 19",
+                            "metadata": {},
+                        }
+                    ],
+                    "seed_contexts": [],
+                    "expanded_contexts": [],
+                    "retrieved_chunks": [],
+                    "grounding": {"is_grounded": True},
+                }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            output_path = base / "results.json"
+            questions = [{"id": 1, "question": "hóa đơn điện tử có mã của cơ quan thuế"}]
+
+            with patch("src.evaluation.evaluate_qa.LegalQAPipeline", return_value=_TopLevelContextQAPipeline()):
+                evaluate_questions(questions, run_id="unit_top_level_context_refs", output_path=output_path, limit=1)
+
+            payload = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                payload[0]["relevant_docs"],
+                ["119/2018/NĐ-CP|Nghị định 119/2018/NĐ-CP quy định về hóa đơn điện tử khi bán hàng hóa, cung cấp dịch vụ"],
+            )
+            self.assertEqual(
+                payload[0]["relevant_articles"],
+                [
+                    "119/2018/NĐ-CP|Nghị định 119/2018/NĐ-CP quy định về hóa đơn điện tử khi bán hàng hóa, cung cấp dịch vụ|Điều 19"
+                ],
+            )
 
 
 if __name__ == "__main__":

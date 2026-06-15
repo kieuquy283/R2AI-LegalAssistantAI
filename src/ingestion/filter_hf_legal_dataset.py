@@ -145,6 +145,20 @@ def run_filter(dataset_name: str, output_path: Path, limit: int | None = None) -
     matched = 0
     deduped = 0
     seen_keys: set[tuple[str, str, str]] = set()
+    
+    # INCREMENTAL UPDATE: Load existing hashes to skip already processed data
+    existing_hashes = set()
+    if output_path.exists():
+        print(f"[INFO] Found existing file: {output_path}. Loading existing hashes to skip duplicates...")
+        with output_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    existing_data = json.loads(line)
+                    existing_hashes.add(existing_data.get("content_hash", ""))
+                except json.JSONDecodeError:
+                    continue
+        print(f"[INFO] Loaded {len(existing_hashes)} existing records. Will skip them.")
+
     domain_counter: Counter[str] = Counter()
     group_counter: Counter[str] = Counter()
     keyword_counter: Counter[str] = Counter()
@@ -152,9 +166,17 @@ def run_filter(dataset_name: str, output_path: Path, limit: int | None = None) -
     sample_docs: dict[str, list[dict[str, Any]]] = defaultdict(list)
     iterator = _join_metadata_and_content(dataset_name=dataset_name, limit=limit)
     ensure_parent(output_path)
-    with output_path.open("w", encoding="utf-8") as handle:
+    
+    # Use "a" (append) mode to add new records without deleting old ones
+    with output_path.open("a", encoding="utf-8") as handle:
         for row in tqdm(iterator, desc="filter_hf_legal_dataset", unit="doc"):
             scanned += 1
+            
+            # Skip if already processed in previous runs
+            content_hash = str(row.get("content_hash") or sha256_text(str(row.get("content") or ""))).strip()
+            if content_hash in existing_hashes:
+                continue
+
             filter_result = evaluate_hf_legal_filter(row)
             if not filter_result["include"]:
                 continue
@@ -177,7 +199,7 @@ def run_filter(dataset_name: str, output_path: Path, limit: int | None = None) -
                 "priority": filter_result["priority"],
                 "source_url": row["source_url"],
                 "content": row["content"],
-                "content_hash": row["content_hash"],
+                "content_hash": content_hash,
             }
 
             dedupe_key = _dedupe_key(normalized_row)
