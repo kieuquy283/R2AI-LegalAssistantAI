@@ -79,6 +79,104 @@ Files:
 - **Overall**: **~85** (slight drop due to filtering provincial docs)
 - **Output**: `data/processed/submission_parquet.json`
 
+## Pipeline Optimizations (2026-06-26)
+
+### Data Cleanup
+- Xoá 45 "VĂN BẢN NÀY TRÙNG" duplicate points
+- Fix 523 anomalous doc_numbers (leading quotes, "Khongso", "Số:", "Thông tư" prefix)
+- Script: `scripts/clean_anomalous_doc_numbers.py`
+
+### BM25 Optimizations
+- k1, b → env vars `R2AI_BM25_K1`/`R2AI_BM25_B` (default 1.5/0.75)
+- Bigrams optional flag `R2AI_BM25_BIGRAMS=true/false`
+- Tokenizer preserves legal refs as single tokens (`45/2026/NĐ-CP`, `48-L/CTN`)
+- Cache lock with portalocker (shared read/exclusive write)
+
+### LEGAL_REF_PATTERN Updated
+- `qdrant_retriever.py`, `legal_exact_search.py`, `run_full.py`, `reranker.py`
+- Support old format `48-L/CTN` (no `/` prefix)
+
+### RRF Improvements
+- `rrf_sum * 10.0` → proper min-max normalization to [0,1]
+- Global min-max norm after both RRF and linear fusion paths
+- `CURRENT_YEAR` hardcoded → `datetime.now().year`
+- `RRF_K` → env var `R2AI_RRF_K` (default 60)
+
+### Heuristic Reranker Refactor
+- 12+ if-else topic penalties → data-driven `_TOPIC_PENALTIES`/`_TOPIC_TITLE_PENALTIES` dicts
+- Min thresholds → env vars `R2AI_HEURISTIC_MIN_FINAL/LEXICAL/TITLE`
+- Difficulty limits → env vars `R2AI_DIFF_EASY_*`, `R2AI_DIFF_MID_*`, `R2AI_DIFF_HARD_*`, `R2AI_DIFF_VERYHARD_*`
+
+### API Cascade
+- Circuit breaker (3 failures/60s → 5min cooldown)
+- Truncation 512 → 2048 (`R2AI_API_TRUNCATION`)
+- Blend weight → env var `R2AI_API_WEIGHT` (default 0.5)
+- Dynamic filter: removed `or s >= 0.05` (was no-op)
+- Threshold: dùng 50% thay vì bypass hoàn toàn khi API-scored
+
+### max_docs Cap
+- very_hard 5→4, `select_dynamic_contexts` enforces doc_count for article-level items (max 4 distinct docs)
+
+### Task 1: LLM Query Rewriting (2026-06-26)
+- `_rewrite_query_llm()` in `query_expander.py` uses LLM to rewrite mid/hard questions
+- Toggle: `R2AI_USE_LLM_QUERY_REWRITE=true/false`
+- Skip easy questions to save cost/latency
+
+### Task 2: Semantic Cache (2026-06-26)
+- File: `src/qa_pipeline.py`
+- Stores query→result in pickle cache (`data/cache/semantic_cache.pkl`)
+- Cosine similarity threshold `R2AI_CACHE_SIM_THRESHOLD` (default 0.95)
+- TTL `R2AI_CACHE_TTL` (default 3600s / 1 hour)
+- Auto-prunes expired entries, flushes every 50 entries
+
+### Task 3: Structured Output (2026-06-26)
+- File: `src/generation/answer_generator.py`
+- New `_generate_structured()` method requests JSON response with 4-section schema
+- Parse JSON or fallback to regular free-text generation
+- Toggle: `R2AI_USE_STRUCTURED_OUTPUT=true/false`
+- Generation mode tracked: `llm_structured` / `llm` / `template`
+
+### Task 4: Multi-Query Retrieval (2026-06-26)
+- File: `src/retrieval/retrieval_pipeline.py`
+- `_generate_multi_queries()` uses LLM (t=0.3) to create 3 variants for mid/hard questions
+- Each variant is independently retrieved, results deduplicated and merged via fusion
+- Toggle: `R2AI_USE_MULTI_QUERY=true/false`
+
+### Task 5: Iterative Retrieval / CRAG (2026-06-26)
+- File: `src/retrieval/retrieval_pipeline.py`
+- `_crag_refine_query()` checks if `final_contexts < R2AI_CRAG_MIN_CONTEXTS` (default 2)
+- If low, generates broader/fewer-specificity query → re-retrieve → merge results
+- Only runs when improvement is detected (new result has more contexts)
+- Toggle: `R2AI_USE_CRAG=true/false`
+
+### Task 6: Adaptive Retrieval Depth (2026-06-26)
+- File: `src/retrieval/retrieval_pipeline.py`
+- `_estimate_difficulty()` drives `adapted_rerank_n` (cuts fusion output before reranker)
+- Scale: easy=0.5, mid=1.0, hard=1.5, very_hard=2.0
+
+### Task 7: Parallel Retrieval (2026-06-26)
+- File: `src/retrieval/retrieval_pipeline.py`
+- Uses `ThreadPoolExecutor` with `max_workers=min(n_queries, 4)`
+- Runs dense + sparse + exact for each query variant concurrently
+- Toggle: `R2AI_USE_PARALLEL_RETRIEVAL=true/false`
+
+### Task 8: Distilled Cross-Encoder Config (2026-06-26)
+- Already supported via env var `HYBRID_RERANKER_MODEL` (default `BAAI/bge-reranker-v2-m3`)
+- Model, batch size, max length all configurable through env vars
+
+### Task 9: Structured Monitoring Log (2026-06-26)
+- File: `src/qa_pipeline.py`
+- JSON log entry at end of each `answer()` call with question, route, elapsed_s, n_contexts, n_docs, n_articles, low_confidence, gen_mode
+- Compatible with log aggregation tools
+
+### Task 10: Regression Testing Script (2026-06-26)
+- File: `scripts/eval_regression.py`
+- `python scripts/eval_regression.py --questions-file <path> --output report.json [--sample N] [--verbose]`
+- Reports: coverage, low_confidence count, CRAG usage, avg contexts/docs/time
+- Seed=42 for reproducible sampling
+
+### Full 2000 Run (previous)
+
 ## Feature Flags (env vars)
 
 | Flag | Effect |
@@ -92,24 +190,63 @@ Files:
 | `HYBRID_RERANKER_ENABLE_CROSS_ENCODER=false` | Tắt cross-encoder model (rất chậm trên CPU) |
 | `HYBRID_RERANKER_API_ENABLED=false` | Tắt API reranker (SiliconFlow) |
 | `HYBRID_RERANKER_HEURISTIC_TOP_K=15` | Số candidate heuristic filter (default: 15) |
+| `R2AI_USE_LLM_QUERY_REWRITE=false` | Use LLM to rewrite query for mid/hard questions |
+| `R2AI_USE_SEMANTIC_CACHE=true` | Enable/disable semantic result cache |
+| `R2AI_USE_STRUCTURED_OUTPUT=true` | Generate answer as JSON with 4 fields |
+| `R2AI_USE_MULTI_QUERY=true` | Generate 3 query variants for better recall |
+| `R2AI_USE_CRAG=true` | Re-retrieve with broader query if too few contexts |
+| `R2AI_USE_PARALLEL_RETRIEVAL=true` | Run retrievers concurrently per query variant |
+| `R2AI_CACHE_SIM_THRESHOLD=0.95` | Cosine similarity threshold for cache hit |
+| `R2AI_CACHE_TTL=3600` | Cache TTL in seconds (default 1 hour) |
+| `R2AI_CRAG_MIN_CONTEXTS=2` | Min contexts before CRAG triggers refinement |
+| `R2AI_BM25_K1=1.5` | BM25 k1 parameter |
+| `R2AI_BM25_B=0.75` | BM25 b parameter |
+| `R2AI_BM25_BIGRAMS=false` | Enable bigram tokenization for BM25 |
+| `R2AI_RRF_K=60` | RRF ranking constant |
+| `R2AI_API_WEIGHT=0.5` | Blend weight between API and heuristic scores |
+| `R2AI_API_TRUNCATION=2048` | Max text length sent to API reranker |
+| `R2AI_HEURISTIC_MIN_FINAL=0.05` | Heuristic min final score threshold |
+| `R2AI_HEURISTIC_MIN_LEXICAL=0.05` | Heuristic min lexical overlap threshold |
+| `R2AI_HEURISTIC_MIN_TITLE=0.1` | Heuristic min title overlap threshold |
+| `R2AI_DIFF_EASY_DOCS=2` | Max docs for easy questions |
+| `R2AI_DIFF_EASY_ARTS=2` | Max articles for easy questions |
+| `R2AI_DIFF_EASY_CTX=3` | Max contexts for easy questions |
+| `R2AI_DIFF_HARD_DOCS=4` | Max docs for hard questions |
+| `R2AI_DIFF_HARD_ARTS=10` | Max articles for hard questions |
+| `R2AI_DIFF_HARD_CTX=12` | Max contexts for hard questions |
+| `R2AI_DIFF_VERYHARD_DOCS=4` | Max docs for very hard questions |
+| `R2AI_DIFF_VERYHARD_ARTS=12` | Max articles for very hard questions |
+| `R2AI_DIFF_VERYHARD_CTX=12` | Max contexts for very hard questions |
 
-## Performance Benchmarks
+## Performance Benchmarks (updated)
 
 | Scenario | Time | Notes |
 |----------|------|-------|
 | Pipeline init | ~25s | Embedding model + BM25 preload (2-4s) |
 | Query with cross-encoder | ~16s | Too slow for production |
-| Query heuristic-only | ~1s | Default (recommended) |
+| Query heuristic-only | ~1s | Default without multi-query/CRAG |
 | Query with API reranker | ~3s | SiliconFlow API |
-| Full 2000 eval (heuristic) | 22.8 min | ~0.68s/q |
+| Multi-query (3 variants) | ~2-3x base | Parallel retrieval minimizes overhead |
+| CRAG re-retrieval | ~+0.5s | Only triggers when contexts < min threshold |
+| Full 2000 eval (heuristic) | 22.8 min | ~0.68s/q (pre-optimizations) |
 
 ## Critical Files
 
 - `src/generation/prompt_builder.py` — prompt optimization
-- `src/retrieval/query_expander.py` — query expansion (keyword-based from labeled_dataset_local.jsonl)
-- `src/retrieval/retrieval_pipeline.py` — retrieval pipeline with routing
-- `src/qa_pipeline.py` — main pipeline entry point
+- `src/generation/answer_generator.py` — answer generation with structured JSON output
+- `src/retrieval/query_expander.py` — query expansion (keyword + LLM rewrite)
+- `src/retrieval/retrieval_pipeline.py` — retrieval pipeline with routing, multi-query, CRAG, parallel retrieval
+- `src/retrieval/hybrid_fusion.py` — RRF min-max norm, difficulty-based selection, global norm
+- `src/retrieval/hybrid_reranker.py` — API circuit breaker, truncation, blend weight, cross-encoder config
+- `src/retrieval/reranker.py` — data-driven topic penalties, heuristic threshold env vars
+- `src/retrieval/bm25_retriever.py` — env-var BM25 (k1/b), cache lock, combined text fields
+- `src/retrieval/legal_exact_search.py` — LEGAL_REF_PATTERN updated
+- `src/retrieval/qdrant_retriever.py` — LEGAL_REF_PATTERN updated
+- `src/qa_pipeline.py` — main pipeline entry point with semantic cache + monitoring
+- `scripts/clean_anomalous_doc_numbers.py` — Qdrant doc_number cleanup
+- `scripts/run_full.py` — full 2000 runner, updated _DOC_RE pattern
+- `scripts/eval_regression.py` — regression testing script
 - `data/processed/labeled_dataset_local.jsonl` — 1,995 labeled Q&A with `tu_khoa_phap_ly`
 - `data/evaluation/r2ai_stage1_questions.jsonl` — 2,000 eval questions
-- `data/processed/submission_parquet.json` — final output (2000 entries)
+- `data/processed/submission_parquet.json` — final output (2000 entries, pre-optimizations)
 - `data/cache/bm25_cache.pkl` + `data/cache/chunks.db` — BM25 cache

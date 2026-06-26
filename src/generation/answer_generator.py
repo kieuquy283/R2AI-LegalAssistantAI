@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 from typing import Dict, List
 
@@ -13,6 +14,8 @@ from src.retrieval.retrieval_pipeline import RetrievalPipeline
 _ARTICLE_RE = re.compile(r"(?:Điều|điều)\s+\d+[a-zA-Z]?", re.IGNORECASE)
 _CLAUSE_RE = re.compile(r"(?:Khoản|khoản)\s+\d+[a-zA-Z]?", re.IGNORECASE)
 _POINT_RE = re.compile(r"(?:Điểm|điểm)\s+[a-zA-Z]", re.IGNORECASE)
+
+_USE_STRUCTURED_OUTPUT = os.getenv("R2AI_USE_STRUCTURED_OUTPUT", "true").strip().lower() in {"1", "true", "yes"}
 
 
 class AnswerGenerator:
@@ -144,6 +147,72 @@ class AnswerGenerator:
             f"- Nếu có vướng mắc, liên hệ chuyên gia pháp lý hoặc cơ quan chức năng để được hướng dẫn cụ thể."
         )
 
+    def _generate_structured(self, system_prompt: str, user_prompt: str) -> Dict[str, str] | None:
+        """Generate with JSON mode, parse sections from the JSON response."""
+        json_prompt = (
+            "Trả về kết quả dưới dạng JSON hợp lệ với schema sau:\n"
+            "{\n"
+            '  "ket_luan_ngan": "nội dung kết luận ngắn",\n'
+            '  "can_cu_phap_luat": "nội dung căn cứ pháp luật",\n'
+            '  "phan_tich_ap_dung": "nội dung phân tích áp dụng",\n'
+            '  "viec_sme_nen_lam": "nội dung việc SME nên làm"\n'
+            "}\n"
+            "Chỉ trả về JSON, không thêm text nào khác.\n\n"
+            f"{user_prompt}"
+        )
+        text = self.llm_client.generate(
+            system_prompt=system_prompt,
+            user_prompt=json_prompt,
+            temperature=self.temperature,
+        )
+        if not text:
+            return None
+        text = text.strip()
+        # Try to parse as JSON
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, dict) and all(k in parsed for k in ("ket_luan_ngan",)):
+                sections = {
+                    "ket_luan_ngan": str(parsed.get("ket_luan_ngan", "")),
+                    "can_cu_phap_luat": str(parsed.get("can_cu_phap_luat", "")),
+                    "phan_tich_ap_dung": str(parsed.get("phan_tich_ap_dung", "")),
+                    "viec_sme_nen_lam": str(parsed.get("viec_sme_nen_lam", "")),
+                }
+                formatted = (
+                    f"1. Kết luận ngắn\n{sections['ket_luan_ngan']}\n\n"
+                    f"2. Căn cứ pháp luật\n{sections['can_cu_phap_luat']}\n\n"
+                    f"3. Phân tích áp dụng\n{sections['phan_tich_ap_dung']}\n\n"
+                    f"4. Việc SME nên làm\n{sections['viec_sme_nen_lam']}"
+                )
+                return {"answer": formatted, **sections}
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # Fallback: try to extract JSON from code fence
+        m = re.search(r'```(?:json)?\s*({.*?})\s*```', text, re.DOTALL)
+        if m:
+            try:
+                parsed = json.loads(m.group(1))
+            except json.JSONDecodeError:
+                pass
+        return None
+
+    def _parse_structured_sections(self, text: str) -> Dict[str, str] | None:
+        """Parse 4 sections from free-text answer into structured dict."""
+        sections = {}
+        section_patterns = [
+            (r"1\.\s*Kết luận ngắn\s*\n(.*?)(?=\n\s*2\.|\Z)", "ket_luan_ngan"),
+            (r"2\.\s*Căn cứ pháp luật\s*\n(.*?)(?=\n\s*3\.|\Z)", "can_cu_phap_luat"),
+            (r"3\.\s*Phân tích áp dụng\s*\n(.*?)(?=\n\s*4\.|\Z)", "phan_tich_ap_dung"),
+            (r"4\.\s*Việc SME nên làm\s*\n(.*)", "viec_sme_nen_lam"),
+        ]
+        for pattern, key in section_patterns:
+            m = re.search(pattern, text, re.DOTALL)
+            if m:
+                sections[key] = m.group(1).strip()
+        if len(sections) == 4:
+            return sections
+        return None
+
     def generate(self, *, query: str, retrieval_result: Dict[str, object], use_llm: bool = True) -> Dict[str, object]:
         contexts = list(retrieval_result.get("final_contexts") or [])
         citations = self._collect_citations(contexts)
@@ -155,14 +224,29 @@ class AnswerGenerator:
             domains=list(retrieval_result.get("domains") or []),
         )
         llm_answer = None
+        generation_mode = "template"
         if use_llm:
-            llm_answer = self.llm_client.generate(
-                system_prompt=prompt["system_prompt"],
-                user_prompt=prompt["user_prompt"],
-                temperature=self.temperature,
-            )
-        generation_mode = "llm" if llm_answer else "template"
+            if _USE_STRUCTURED_OUTPUT:
+                structured = self._generate_structured(
+                    system_prompt=prompt["system_prompt"],
+                    user_prompt=prompt["user_prompt"],
+                )
+                if structured:
+                    llm_answer = structured["answer"]
+                    generation_mode = "llm_structured"
+                    print(f"[AnswerGen] Structured JSON mode (contexts={len(contexts)})")
+                else:
+                    pass
+            if llm_answer is None:
+                llm_answer = self.llm_client.generate(
+                    system_prompt=prompt["system_prompt"],
+                    user_prompt=prompt["user_prompt"],
+                    temperature=self.temperature,
+                )
+                if llm_answer:
+                    generation_mode = "llm"
         if not llm_answer:
+            generation_mode = "template"
             print(f"[AnswerGen] LLM unavailable, using template fallback (contexts={len(contexts)})")
         answer = llm_answer or self._fallback_answer(contexts=contexts, citations=citations)
         return {

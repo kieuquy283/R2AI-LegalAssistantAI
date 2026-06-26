@@ -3,13 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from typing import Dict
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, List
 
 from rag.config.runtime import get_retrieval_runtime_config
 from src.retrieval.bm25_retriever import BM25Retriever
 from src.retrieval.confidence_checker import ConfidenceChecker
 from src.retrieval.context_expander import ContextExpander
 from src.retrieval.hybrid_fusion import fuse_candidates, select_dynamic_contexts
+from src.retrieval.hybrid_fusion import _estimate_difficulty
 from src.retrieval.hybrid_retriever import HybridRetriever
 from src.retrieval.legal_exact_search import LegalExactSearch
 from src.retrieval.qdrant_retriever import QdrantRetriever, apply_domain_adjustment
@@ -17,9 +20,78 @@ from src.retrieval.query_expander import expand_query
 from src.retrieval.query_router import route_query
 from src.retrieval.reranker import Reranker
 from src.retrieval.hybrid_reranker import HybridReranker
+from src.generation.llm_client import LLMClient
 
 
 _RETRIEVAL_PIPELINE_INSTANCE: RetrievalPipeline | None = None
+
+# Config flags
+_USE_MULTI_QUERY = os.getenv("R2AI_USE_MULTI_QUERY", "true").strip().lower() in {"1", "true", "yes"}
+_USE_CRAG = os.getenv("R2AI_USE_CRAG", "true").strip().lower() in {"1", "true", "yes"}
+_USE_PARALLEL_RETRIEVAL = os.getenv("R2AI_USE_PARALLEL_RETRIEVAL", "true").strip().lower() in {"1", "true", "yes"}
+_CRAG_MIN_CONTEXTS = int(os.getenv("R2AI_CRAG_MIN_CONTEXTS", "2"))
+
+
+def _generate_multi_queries(query: str, difficulty: str) -> List[str]:
+    """Task 4: Generate multiple query variants for better recall."""
+    if not _USE_MULTI_QUERY or difficulty in ("easy",):
+        return [query]
+    client = LLMClient(temperature=0.3)
+    if not client.is_available():
+        return [query]
+    system_prompt = "Bạn là chuyên gia pháp lý Việt Nam. Chỉ trả về danh sách JSON, không thêm giải thích."
+    user_prompt = (
+        f"Câu hỏi gốc: {query}\n\n"
+        "Hãy tạo 3 cách diễn đạt khác nhau của cùng câu hỏi này để tìm kiếm văn bản pháp luật hiệu quả hơn.\n"
+        "Mỗi biến thể nên:\n"
+        "- Dùng từ đồng nghĩa pháp lý\n"
+        "- Thêm/bớt từ khóa mà vẫn giữ nguyên ý định\n"
+        "- Làm rõ số hiệu văn bản nếu có\n"
+        "Trả về JSON array: [\"biến thể 1\", \"biến thể 2\", \"biến thể 3\"]"
+    )
+    try:
+        text = client.generate(system_prompt=system_prompt, user_prompt=user_prompt, temperature=0.3)
+        if text:
+            text = text.strip()
+            if text.startswith("```"):
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            variants = json.loads(text)
+            if isinstance(variants, list) and len(variants) >= 1:
+                queries = [query] + [str(v).strip() for v in variants if str(v).strip()]
+                print(f"[MultiQuery] Generated {len(queries)} variants for difficulty={difficulty}")
+                return queries
+    except Exception as exc:
+        print(f"[MultiQuery] Generation failed: {exc}")
+    return [query]
+
+
+def _crag_refine_query(initial_query: str, initial_contexts: List[Dict]) -> str | None:
+    """Task 5: If too few contexts, refine query for re-retrieval."""
+    if not _USE_CRAG or len(initial_contexts) >= _CRAG_MIN_CONTEXTS:
+        return None
+    client = LLMClient(temperature=0.0)
+    if not client.is_available():
+        return None
+    system_prompt = "Bạn là chuyên gia pháp lý. Chỉ trả về câu đã viết lại."
+    user_prompt = (
+        f"Câu hỏi gốc: {initial_query}\n\n"
+        f"Số lượng kết quả tìm được: {len(initial_contexts)} (quá ít).\n"
+        "Hãy viết lại câu hỏi để mở rộng phạm vi tìm kiếm:\n"
+        "- Thêm từ khóa đồng nghĩa\n"
+        "- Giảm specificity (bỏ bớt chi tiết thừa)\n"
+        "- Dùng thuật ngữ pháp lý rộng hơn\n\n"
+        "Câu hỏi mở rộng:"
+    )
+    try:
+        refined = client.generate(system_prompt=system_prompt, user_prompt=user_prompt, temperature=0.0)
+        if refined and len(refined) > 10:
+            print(f"[CRAG] Refined query: '{initial_query[:80]}...' -> '{refined[:120]}...'")
+            return refined.strip()
+    except Exception as exc:
+        print(f"[CRAG] Refinement failed: {exc}")
+    return None
 
 
 class RetrievalPipeline:
@@ -133,8 +205,26 @@ class RetrievalPipeline:
             "final_contexts": final_contexts,
         }
 
+    def _retrieve_single(self, q: str, preferred_domains: list[str]) -> Dict[str, List]:
+        """Run dense + sparse + exact for a single query variant."""
+        dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains) if self.qdrant_retriever else []
+        sparse = (
+            self.bm25_retriever.search(q, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
+            if self.bm25_retriever
+            else []
+        )
+        skip_exact = self.runtime_config.candidate_k_title <= 0
+        if not skip_exact and self.exact_search:
+            from src.retrieval.legal_exact_search import LEGAL_REF_PATTERN
+            skip_exact = not LEGAL_REF_PATTERN.search(q)
+        exact = (
+            self.exact_search.search(q, top_k=self.runtime_config.candidate_k_title, preferred_domains=preferred_domains)
+            if self.exact_search and not skip_exact
+            else []
+        )
+        return {"dense": dense, "sparse": sparse, "exact": exact}
+
     def _run_qdrant(self, query: str) -> Dict[str, object]:
-        import time
         t_total = time.perf_counter()
 
         # Optional: force SIMPLE_VECTOR route (disable adaptive routing)
@@ -155,52 +245,114 @@ class RetrievalPipeline:
         preferred_domains = list(initial_route.get("domains") or [])
         t_route = time.perf_counter() - t_total
 
-        # Query Expansion: Add full legal terms for abbreviations to improve BM25/Vector match
-        expanded_query = expand_query(query)
+        # Adaptive depth based on difficulty (Task 6)
+        difficulty = _estimate_difficulty(initial_route.get("route"), query)
+        depth_scale = {"easy": 0.5, "mid": 1.0, "hard": 1.5, "very_hard": 2.0}.get(difficulty, 1.0)
+        adapted_rerank_n = max(50, int(self.runtime_config.rerank_top_n * depth_scale))
+        print(f"[Retrieval] Difficulty={difficulty}, adapted_rerank_n={adapted_rerank_n}")
+
+        # Query Expansion
+        expanded_query = expand_query(query, difficulty=difficulty)
         if expanded_query != query:
             print(f"[Retrieval] Query expanded: '{query}' -> '{expanded_query}'")
 
         t_expand = time.perf_counter()
-        # Use expanded_query for retrieval to boost recall
-        dense_candidates = self.qdrant_retriever.search(expanded_query, preferred_domains=preferred_domains) if self.qdrant_retriever else []
-        t_dense = time.perf_counter() - t_expand
 
-        t_sparse_start = time.perf_counter()
-        sparse_candidates = (
-            self.bm25_retriever.search(expanded_query, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
-            if self.bm25_retriever
-            else []
-        )
-        t_sparse = time.perf_counter() - t_sparse_start
+        # Task 4: Multi-query variants
+        queries = _generate_multi_queries(expanded_query, difficulty)
+        t_multi = time.perf_counter() - t_expand
 
-        t_exact_start = time.perf_counter()
-        # Skip exact search if disabled or query has no legal ref pattern
-        skip_exact = self.runtime_config.candidate_k_title <= 0
-        if not skip_exact and self.exact_search:
-            from src.retrieval.legal_exact_search import LEGAL_REF_PATTERN
-            skip_exact = not LEGAL_REF_PATTERN.search(query) # Keep original query for exact legal ref matching
-        exact_candidates = (
-            self.exact_search.search(query, top_k=self.runtime_config.candidate_k_title, preferred_domains=preferred_domains)
-            if self.exact_search and not skip_exact
-            else []
-        )
-        t_exact = time.perf_counter() - t_exact_start
-        
+        # Task 7: Parallel retrieval across queries and retriever types
+        all_dense: List[Dict] = []
+        all_sparse: List[Dict] = []
+        all_exact: List[Dict] = []
+
+        t_retrieval_start = time.perf_counter()
+        if _USE_PARALLEL_RETRIEVAL and len(queries) > 1:
+            with ThreadPoolExecutor(max_workers=min(len(queries), 4)) as executor:
+                fut_to_q = {executor.submit(self._retrieve_single, q, preferred_domains): q for q in queries}
+                for fut in as_completed(fut_to_q):
+                    q = fut_to_q[fut]
+                    try:
+                        res = fut.result()
+                        all_dense.extend(res["dense"])
+                        all_sparse.extend(res["sparse"])
+                        all_exact.extend(res["exact"])
+                    except Exception as exc:
+                        print(f"[Retrieval] Parallel query '{q[:60]}' failed: {exc}")
+        else:
+            for q in queries:
+                if q == expanded_query:
+                    # First query is the primary one
+                    dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains) if self.qdrant_retriever else []
+                    all_dense.extend(dense)
+                sparse = (
+                    self.bm25_retriever.search(q, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
+                    if self.bm25_retriever
+                    else []
+                )
+                all_sparse.extend(sparse)
+                skip_exact = self.runtime_config.candidate_k_title <= 0
+                if not skip_exact and self.exact_search:
+                    from src.retrieval.legal_exact_search import LEGAL_REF_PATTERN
+                    skip_exact = not LEGAL_REF_PATTERN.search(q)
+                exact = (
+                    self.exact_search.search(q, top_k=self.runtime_config.candidate_k_title, preferred_domains=preferred_domains)
+                    if self.exact_search and not skip_exact
+                    else []
+                )
+                all_exact.extend(exact)
+        t_retrieval = time.perf_counter() - t_retrieval_start
+
+        # Deduplicate within each list
+        seen_ids = set()
+        deduped_dense = []
+        for c in all_dense:
+            cid = c.get("candidate_id")
+            if cid and cid not in seen_ids:
+                seen_ids.add(cid)
+                deduped_dense.append(c)
+            elif not cid:
+                deduped_dense.append(c)
+
+        seen_ids_sparse = set()
+        deduped_sparse = []
+        for c in all_sparse:
+            cid = c.get("candidate_id")
+            if cid and cid not in seen_ids_sparse:
+                seen_ids_sparse.add(cid)
+                deduped_sparse.append(c)
+            elif not cid:
+                deduped_sparse.append(c)
+
+        seen_ids_exact = set()
+        deduped_exact = []
+        for c in all_exact:
+            cid = c.get("candidate_id")
+            if cid and cid not in seen_ids_exact:
+                seen_ids_exact.add(cid)
+                deduped_exact.append(c)
+            elif not cid:
+                deduped_exact.append(c)
+
         t_domain_start = time.perf_counter()
-        apply_domain_adjustment(query, dense_candidates)
+        apply_domain_adjustment(query, deduped_dense)
         t_domain = time.perf_counter() - t_domain_start
-        
+
         t_fuse_start = time.perf_counter()
         reranked = fuse_candidates(
             query,
-            dense_candidates=dense_candidates,
-            bm25_candidates=sparse_candidates,
-            exact_candidates=exact_candidates,
+            dense_candidates=deduped_dense,
+            bm25_candidates=deduped_sparse,
+            exact_candidates=deduped_exact,
             preferred_domains=preferred_domains,
             config=self.runtime_config,
         )
         t_fuse = time.perf_counter() - t_fuse_start
-        
+
+        # Adaptive limit: cap fused results before reranker
+        reranked = reranked[:adapted_rerank_n]
+
         # Optional hybrid reranker pass on fused candidates
         if self._use_hybrid_reranker:
             rerank_start = time.perf_counter()
@@ -211,7 +363,7 @@ class RetrievalPipeline:
             t_rerank = time.perf_counter() - rerank_start
         else:
             t_rerank = 0.0
-        
+
         t_select_start = time.perf_counter()
         final_contexts = select_dynamic_contexts(
             reranked,
@@ -220,10 +372,40 @@ class RetrievalPipeline:
             config=self.runtime_config,
         )
         t_select = time.perf_counter() - t_select_start
-        
+
+        # Task 5: CRAG — refine and re-retrieve if too few contexts
+        crag_used = False
+        refined_query = _crag_refine_query(query, final_contexts)
+        if refined_query and refined_query != query:
+            print(f"[CRAG] Re-retrieving with refined query: '{refined_query[:100]}...'")
+            q2 = expand_query(refined_query, difficulty=difficulty)
+            crag_res = self._retrieve_single(q2, preferred_domains)
+            apply_domain_adjustment(q2, crag_res["dense"])
+            crag_reranked = fuse_candidates(
+                q2,
+                dense_candidates=crag_res["dense"],
+                bm25_candidates=crag_res["sparse"],
+                exact_candidates=crag_res["exact"],
+                preferred_domains=preferred_domains,
+                config=self.runtime_config,
+            )[:adapted_rerank_n]
+            if self._use_hybrid_reranker and self.reranker:
+                crag_reranked = self.reranker.rerank(q2, crag_reranked, max_contexts=rerank_max)
+            crag_contexts = select_dynamic_contexts(
+                crag_reranked,
+                route=initial_route.get("route"),
+                query=query,
+                config=self.runtime_config,
+            )
+            if len(crag_contexts) > len(final_contexts):
+                print(f"[CRAG] Improved: {len(final_contexts)} -> {len(crag_contexts)} contexts")
+                final_contexts = crag_contexts
+                crag_used = True
+                reranked = crag_reranked
+
         t_total = time.perf_counter() - t_total
-        print(f"[Retrieval] route={t_route:.3f}s dense={t_dense:.3f}s sparse={t_sparse:.3f}s exact={t_exact:.3f}s domain={t_domain:.3f}s fuse={t_fuse:.3f}s rerank={t_rerank:.3f}s select={t_select:.3f}s TOTAL={t_total:.3f}s")
-        
+        print(f"[Retrieval] route={t_route:.3f}s multi={t_multi:.3f}s retrieve={t_retrieval:.3f}s domain={t_domain:.3f}s fuse={t_fuse:.3f}s rerank={t_rerank:.3f}s select={t_select:.3f}s CRAG={crag_used} TOTAL={t_total:.3f}s")
+
         confidence_result = {
             "is_confident": bool(final_contexts),
             "should_escalate": False,
@@ -241,9 +423,11 @@ class RetrievalPipeline:
             "seed_contexts": reranked[: min(5, len(reranked))],
             "expanded_contexts": reranked,
             "final_contexts": final_contexts,
-            "dense_candidates": dense_candidates,
-            "sparse_candidates": sparse_candidates,
-            "exact_candidates": exact_candidates,
+            "dense_candidates": deduped_dense,
+            "sparse_candidates": deduped_sparse,
+            "exact_candidates": deduped_exact,
+            "crag_used": crag_used,
+            "multi_queries": queries if len(queries) > 1 else None,
         }
 
 
