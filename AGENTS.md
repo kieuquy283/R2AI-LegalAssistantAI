@@ -235,6 +235,32 @@ Files:
 
 ### Full 2000 Run (previous)
 
+### Phase 3: Domain Assignment from HF Dataset (2026-06-26)
+
+**Source**: `th1nhng0/vietnamese-legal-documents` `legacy/metadata` (518k docs)
+- `document_number` (so_ky_hieu) → `legal_sectors` (English)
+- Mapped 240,299 unique doc_numbers → 8 taxonomy domains via `SECTOR_TO_DOMAIN`
+
+**Scripts**:
+- `scripts/build_domain_map.py` — Load HF dataset, build `doc_number → domain` mapping
+- `scripts/update_qdrant_domain.py` — Scroll 149,707 Qdrant points, overwrite payload with `domain` field
+
+**Coverage**:
+- 93.4% HF-mapped (139,883 points có doc_number match)
+- 6.6% rule-based (9,824 từ doc_title keywords)
+- 41% default business_law (61,357 — legitimate business docs)
+- Domain distribution: business_law 41% | admin_penalty 23.6% | tax 11% | investment 10.1% | land 8.7% | labor 4% | social_insurance 1.2% | ip 0.4%
+
+**Code enabled** (`qdrant_retriever.py`):
+- `_allowed_domain()` — giờ filter theo preferred_domains (substring match)
+- `_query_collection()` — Qdrant-level filter với `MatchValue` trên domain field
+- `_make_candidate()` — dùng `payload.domain` thay vì `tag_1`/`tag_2` (đã có sẵn)
+
+**Tác động**: Mở khóa toàn bộ domain-aware infra:
+- `domain_match` / `wrong_domain_penalty` trong fusion → có tác dụng
+- `apply_domain_adjustment` (labor boost) → chạy được
+- `preferred_domains` routing → Qdrant filter được domain
+
 ### Phase 2: API Weight Sweep (2026-06-26)
 
 **Kết quả sweep 20 mẫu**:
