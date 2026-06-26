@@ -235,6 +235,20 @@ Files:
 
 ### Full 2000 Run (previous)
 
+### Phase 1 Fixes (2026-06-26)
+
+**eval_regression.py fixed**:
+- Added load_dotenv() before importing LegalQAPipeline — testing now uses correct .env config (legal_parquet_v2, proper thresholds)
+
+**Keyword injection completed** (etrieval_pipeline.py):
+- Added so_sanh: [so sánh, khác biệt, phân biệt, đối chiếu]
+- Added co_so_hieu: [số hiệu văn bản, văn bản số, điều khoản]
+- Covers all 5 query types now
+
+**CRAG quality gate fixed** (etrieval_pipeline.py):
+- Easy questions (min_ctx=-1) always skip CRAG regardless of best_score
+- Avoids unnecessary LLM call + re-retrieval on simple questions
+
 ## Feature Flags (env vars)
 
 | Flag | Effect |

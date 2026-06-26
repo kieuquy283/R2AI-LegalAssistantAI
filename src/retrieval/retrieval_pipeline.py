@@ -81,7 +81,7 @@ def _crag_refine_query(initial_query: str, initial_contexts: List[Dict], *, diff
         # Quality gate: fire if best_score too low even if count is sufficient
         if best_score >= 0.15:
             return None
-    if min_ctx < 0 and best_score >= 0.15:
+    if min_ctx < 0:
         return None
     client = LLMClient(temperature=0.0)
     if not client.is_available():
@@ -285,6 +285,8 @@ class RetrievalPipeline:
             "muc_phat": ["mức phạt tiền", "xử phạt vi phạm hành chính", "chế tài"],
             "thu_tuc": ["thủ tục hành chính", "trình tự thực hiện", "hồ sơ"],
             "dinh_nghia": ["quy định", "theo quy định của pháp luật"],
+            "so_sanh": ["so sánh", "khác biệt", "phân biệt", "đối chiếu"],
+            "co_so_hieu": ["số hiệu văn bản", "văn bản số", "điều khoản"],
         }
         extra_kws = []
         for t in query_class.get("types", []):
