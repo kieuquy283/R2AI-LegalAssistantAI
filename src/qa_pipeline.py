@@ -454,6 +454,31 @@ class LegalQAPipeline:
         final_contexts = raw_final_contexts if quality["is_relevant"] else []
         answer_retrieval_result = dict(retrieval_result)
         answer_retrieval_result["final_contexts"] = final_contexts
+
+        # Optional: disable answer generation entirely
+        disable_answer = os.getenv("R2AI_DISABLE_ANSWER", "").strip().lower() in {"1", "true", "yes"}
+        if disable_answer:
+            return {
+                "question": question,
+                "route": retrieval_result["route"],
+                "domains": retrieval_result["domains"],
+                "answer": "",
+                "citations": [],
+                "relevant_docs": [],
+                "relevant_doc_details": [],
+                "relevant_articles": [],
+                "relevant_article_details": [],
+                "grounding": None,
+                "low_confidence": not quality["is_relevant"],
+                "low_confidence_reason": quality["reason"],
+                "retrieved_chunks": retrieval_result["seed_chunks"],
+                "seed_contexts": retrieval_result["seed_contexts"],
+                "expanded_contexts": retrieval_result["expanded_contexts"],
+                "final_contexts": final_contexts,
+                "raw_final_contexts": raw_final_contexts,
+                "answer_citations": [],
+            }
+
         generated = self.answer_generator.generate(query=question, retrieval_result=answer_retrieval_result, use_llm=use_llm)
         citations = self._build_citation_payload(final_contexts)
         relevant_docs = self._build_relevant_docs(final_contexts)

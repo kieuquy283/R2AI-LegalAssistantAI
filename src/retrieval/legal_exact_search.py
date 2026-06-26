@@ -12,7 +12,7 @@ from rag.modules.retrieval.utils import tokenize_for_bm25
 from src.ingestion.common import read_jsonl
 
 
-LEGAL_REF_PATTERN = re.compile(r"\b\d+(?:/\d+)+/[A-Z0-9À-ỴĂÂĐÊÔƠƯ\-]+\b", re.IGNORECASE)
+LEGAL_REF_PATTERN = re.compile(r"\b\d+(?:/\d+)*(?:-[A-Z]+)*/[A-Z0-9À-ỴĂÂĐÊÔƠƯ\-]+\b", re.IGNORECASE)
 ARTICLE_PATTERN = re.compile(r"(điều|dieu)\s+\d+[A-Za-zÀ-ỴăâêôơưĐđ]*", re.IGNORECASE)
 
 

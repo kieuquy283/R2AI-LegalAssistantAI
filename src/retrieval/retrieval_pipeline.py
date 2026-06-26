@@ -137,30 +137,43 @@ class RetrievalPipeline:
         import time
         t_total = time.perf_counter()
 
-        t0 = time.perf_counter()
-        initial_route = route_query(query, seed_chunks=[])
+        # Optional: force SIMPLE_VECTOR route (disable adaptive routing)
+        force_simple = os.getenv("R2AI_FORCE_SIMPLE_ROUTE", "").strip().lower() in {"1", "true", "yes"}
+        if force_simple:
+            initial_route = {
+                "route": "SIMPLE_VECTOR",
+                "domains": [],
+                "needs_parent": False,
+                "needs_neighbor": False,
+                "needs_graph": False,
+                "needs_cross_domain": False,
+                "reason": "Forced SIMPLE_VECTOR by R2AI_FORCE_SIMPLE_ROUTE",
+            }
+            print("[Retrieval] Adaptive routing disabled, forced SIMPLE_VECTOR")
+        else:
+            initial_route = route_query(query, seed_chunks=[])
         preferred_domains = list(initial_route.get("domains") or [])
-        t_route = time.perf_counter() - t0
+        t_route = time.perf_counter() - t_total
 
         # Query Expansion: Add full legal terms for abbreviations to improve BM25/Vector match
         expanded_query = expand_query(query)
         if expanded_query != query:
             print(f"[Retrieval] Query expanded: '{query}' -> '{expanded_query}'")
 
-        t0 = time.perf_counter()
+        t_expand = time.perf_counter()
         # Use expanded_query for retrieval to boost recall
         dense_candidates = self.qdrant_retriever.search(expanded_query, preferred_domains=preferred_domains) if self.qdrant_retriever else []
-        t_dense = time.perf_counter() - t0
+        t_dense = time.perf_counter() - t_expand
 
-        t0 = time.perf_counter()
+        t_sparse_start = time.perf_counter()
         sparse_candidates = (
             self.bm25_retriever.search(expanded_query, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
             if self.bm25_retriever
             else []
         )
-        t_sparse = time.perf_counter() - t0
+        t_sparse = time.perf_counter() - t_sparse_start
 
-        t0 = time.perf_counter()
+        t_exact_start = time.perf_counter()
         # Skip exact search if disabled or query has no legal ref pattern
         skip_exact = self.runtime_config.candidate_k_title <= 0
         if not skip_exact and self.exact_search:
@@ -171,13 +184,13 @@ class RetrievalPipeline:
             if self.exact_search and not skip_exact
             else []
         )
-        t_exact = time.perf_counter() - t0
+        t_exact = time.perf_counter() - t_exact_start
         
-        t0 = time.perf_counter()
+        t_domain_start = time.perf_counter()
         apply_domain_adjustment(query, dense_candidates)
-        t_domain = time.perf_counter() - t0
+        t_domain = time.perf_counter() - t_domain_start
         
-        t0 = time.perf_counter()
+        t_fuse_start = time.perf_counter()
         reranked = fuse_candidates(
             query,
             dense_candidates=dense_candidates,
@@ -186,21 +199,27 @@ class RetrievalPipeline:
             preferred_domains=preferred_domains,
             config=self.runtime_config,
         )
-        t_fuse = time.perf_counter() - t0
+        t_fuse = time.perf_counter() - t_fuse_start
         
         # Optional hybrid reranker pass on fused candidates
         if self._use_hybrid_reranker:
-            t0 = time.perf_counter()
+            rerank_start = time.perf_counter()
             if not self.reranker:
                 self.reranker = HybridReranker()
-            reranked = self.reranker.rerank(query, reranked, max_contexts=self.runtime_config.candidate_k_chunks)
-            t_rerank = time.perf_counter() - t0
+            rerank_max = self.runtime_config.candidate_k_chunks or self.runtime_config.candidate_k_articles or self.runtime_config.rerank_top_n or 50
+            reranked = self.reranker.rerank(query, reranked, max_contexts=rerank_max)
+            t_rerank = time.perf_counter() - rerank_start
         else:
             t_rerank = 0.0
         
-        t0 = time.perf_counter()
-        final_contexts = select_dynamic_contexts(reranked, config=self.runtime_config)
-        t_select = time.perf_counter() - t0
+        t_select_start = time.perf_counter()
+        final_contexts = select_dynamic_contexts(
+            reranked,
+            route=initial_route.get("route"),
+            query=query,
+            config=self.runtime_config,
+        )
+        t_select = time.perf_counter() - t_select_start
         
         t_total = time.perf_counter() - t_total
         print(f"[Retrieval] route={t_route:.3f}s dense={t_dense:.3f}s sparse={t_sparse:.3f}s exact={t_exact:.3f}s domain={t_domain:.3f}s fuse={t_fuse:.3f}s rerank={t_rerank:.3f}s select={t_select:.3f}s TOTAL={t_total:.3f}s")

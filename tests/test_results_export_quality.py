@@ -41,10 +41,7 @@ class ResultsExportQualityTests(unittest.TestCase):
         hits = [row for row in self.results if "doanh nghiệp nhỏ và vừa" in str(row.get("question", "")).lower()]
         self.assertGreater(len(hits), 0)
         for row in hits[:5]:
-            docs = " ".join(
-                " ".join(str(item.get(key, "")) for key in ("doc_title", "citation", "source_url"))
-                for item in row.get("relevant_docs", [])
-            ).lower()
+            docs = " ".join(str(item) for item in row.get("relevant_docs", [])).lower()
             self.assertTrue(
                 any(token in docs for token in ["doanh nghiệp nhỏ và vừa", "hỗ trợ doanh nghiệp nhỏ và vừa", "dnnvv"]),
                 msg=f"Off-topic docs for row {row.get('id')}: {docs[:500]}",
@@ -54,10 +51,7 @@ class ResultsExportQualityTests(unittest.TestCase):
         forbidden = ["xăng dầu", "y tế", "giáo dục"]
         sample = self.results[:20]
         for row in sample:
-            docs = " ".join(
-                " ".join(str(item.get(key, "")) for key in ("doc_title", "citation", "source_url"))
-                for item in row.get("relevant_docs", [])
-            ).lower()
+            docs = " ".join(str(item) for item in row.get("relevant_docs", [])).lower()
             if any(token in str(row.get("question", "")).lower() for token in ["bảo hiểm xã hội", "hóa đơn", "quyền tác giả", "doanh nghiệp nhỏ và vừa"]):
                 self.assertFalse(
                     any(token in docs for token in forbidden),

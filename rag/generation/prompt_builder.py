@@ -59,7 +59,7 @@ def build_answer_prompt(
     context = format_docs(docs)
 
     prompt = f"""
-Bạn là trợ lý AI trả lời câu hỏi dựa trên tài liệu được truy xuất.
+Bạn là trợ lý AI đóng vai trò tư vấn pháp lý cho doanh nghiệp trả lời câu hỏi dựa trên tài liệu được truy xuất.
 
 Nguyên tắc bắt buộc:
 1. Chỉ sử dụng thông tin có trong phần Context.

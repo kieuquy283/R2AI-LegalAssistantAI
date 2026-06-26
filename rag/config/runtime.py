@@ -52,6 +52,13 @@ class RetrievalRuntimeConfig:
     relative_score_threshold: float = field(default_factory=lambda: _get_float("RELATIVE_SCORE_THRESHOLD", 0.75))
     citation_score_threshold: float = field(default_factory=lambda: _get_float("CITATION_SCORE_THRESHOLD", 0.50))
 
+    # HNSW index config (Qdrant)
+    hnsw_ef_construction: int = field(default_factory=lambda: _get_int("HNSW_EF_CONSTRUCTION", 200))
+    hnsw_m: int = field(default_factory=lambda: _get_int("HNSW_M", 16))
+    hnsw_ef_search: int = field(default_factory=lambda: _get_int("HNSW_EF_SEARCH", 128))
+    hnsw_on_disk: bool = field(default_factory=lambda: _get_text("HNSW_ON_DISK", "true").lower() == "true")
+    hnsw_full_scan_threshold: int = field(default_factory=lambda: _get_int("HNSW_FULL_SCAN_THRESHOLD", 20000))
+
 
 def get_retrieval_runtime_config() -> RetrievalRuntimeConfig:
     return RetrievalRuntimeConfig()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 from typing import Any, Iterable, List, Sequence
 
@@ -23,6 +24,9 @@ STOPWORDS = {
     "an",
 }
 
+# Single-token pass-through for legal document numbers (e.g. "45/2026/ND-CP", "48-L/CTN")
+_LEGAL_REF_RE = re.compile(r"\d+(?:/\d+)*(?:-[A-Z]+)*/[A-Z0-9À-ỴĂÂĐÊÔƠƯ\-]+", re.IGNORECASE)
+
 
 def normalize_text(text: str) -> str:
     text = str(text or "").lower()
@@ -35,19 +39,26 @@ def tokenize_for_bm25(text: str) -> List[str]:
     if not normalized:
         return []
 
+    # Pass-through legal document references as single tokens (e.g. "45/2026/nd-cp", "48-l/ctn")
+    legal_refs = _LEGAL_REF_RE.findall(normalized)
+
     basic_tokens = [
         token
         for token in re.findall(r"\w+", normalized)
         if token not in STOPWORDS and len(token) > 1
     ]
     if not basic_tokens:
-        return []
+        return legal_refs
 
-    bigrams = [
-        f"{basic_tokens[index]}_{basic_tokens[index + 1]}"
-        for index in range(len(basic_tokens) - 1)
-    ]
-    return basic_tokens + bigrams
+    use_bigrams = os.getenv("R2AI_BM25_BIGRAMS", "true").strip().lower() in {"1", "true", "yes"}
+    tokens = basic_tokens + legal_refs
+    if use_bigrams:
+        bigrams = [
+            f"{basic_tokens[index]}_{basic_tokens[index + 1]}"
+            for index in range(len(basic_tokens) - 1)
+        ]
+        tokens = tokens + bigrams
+    return tokens
 
 
 def min_max_normalize(scores: Sequence[float]) -> List[float]:

@@ -18,6 +18,16 @@ os.environ.setdefault("TORCH_HOME", r"D:\huggingface_cache\torch")
 
 LOGGER = logging.getLogger(__name__)
 
+# Circuit breaker state for API reranker
+_API_CIRCUIT_BREAKER = {
+    "failures": 0,
+    "first_failure_time": 0.0,
+    "open_until": 0.0,  # timestamp until which circuit is open
+}
+_CIRCUIT_BREAKER_THRESHOLD = 3       # consecutive failures to open circuit
+_CIRCUIT_BREAKER_WINDOW = 60.0       # seconds to count failures
+_CIRCUIT_BREAKER_COOLDOWN = 300.0    # seconds before retrying (5 min)
+
 
 class HybridReranker:
     """Cascade reranker: heuristic first (fast) then cross-encoder (accurate)."""
@@ -30,13 +40,14 @@ class HybridReranker:
         cross_encoder_model: str = "BAAI/bge-reranker-v2-m3",
         batch_size: int = 16,
         max_length: int = 256,
-        heuristic_weight: float = 0.3,
-        cross_weight: float = 0.7,
+        heuristic_weight: float = 0.8,
+        cross_weight: float = 0.2,
         enable_cross_encoder: bool | None = None,
         device_strategy: str = "auto",
     ) -> None:
         self.heuristic = HeuristicReranker()
         self.heuristic_top_k = int(os.getenv("HYBRID_RERANKER_HEURISTIC_TOP_K", heuristic_top_k))
+        self._skip_heuristic = os.getenv("HYBRID_RERANKER_SKIP_HEURISTIC", "false").strip().lower() in {"1", "true", "yes"}
         self.max_contexts = int(max_contexts)
         self.cross_encoder_model = str(os.getenv("HYBRID_RERANKER_MODEL", cross_encoder_model))
         self.batch_size = int(os.getenv("HYBRID_RERANKER_BATCH_SIZE", batch_size))
@@ -198,16 +209,12 @@ class HybridReranker:
         for context, raw_score in zip(candidates, raw_scores):
             heuristic_score = float(context.get("final_score") or 0.0)
             normalized_cross = (float(raw_score) - min_score) / score_range
-            combined = (
-                self.heuristic_weight * heuristic_score
-                + self.cross_weight * normalized_cross
-            )
             context["cross_encoder_score"] = round(float(raw_score), 4)
             context["normalized_cross_score"] = round(normalized_cross, 4)
             context["heuristic_score"] = round(heuristic_score, 4)
-            context["final_score"] = round(combined, 6)
+            context["final_score"] = round(normalized_cross, 6)
 
-        # Re-sort by combined score
+        # Re-sort by cross-encoder score only (cascaded)
         candidates.sort(key=lambda item: float(item["final_score"]), reverse=True)
         # Print top 3 for visibility
         if candidates:
@@ -219,61 +226,74 @@ class HybridReranker:
         query: str,
         candidates: List[Dict[str, object]],
     ) -> List[Dict[str, object]]:
+        global _API_CIRCUIT_BREAKER
+        now = time.perf_counter()
+
+        # Circuit breaker: check if open
+        if _API_CIRCUIT_BREAKER["open_until"] > now:
+            print(f"[HybridReranker] API circuit breaker open (until {_API_CIRCUIT_BREAKER['open_until']-now:.0f}s). Fallback to heuristic.")
+            return candidates
+
         if not self._api_reranker_key or not candidates:
             return candidates
 
         texts = [self._build_text(c) for c in candidates]
-        
+
         # Retry logic with exponential backoff
         max_retries = 3
         base_delay = 1.0
         last_error = None
-        
+
         result = None
+        api_weight = float(os.getenv("R2AI_API_WEIGHT", "0.5"))
+        heuristic_weight = 1.0 - api_weight
+        t0 = time.perf_counter()
         for attempt in range(max_retries):
             try:
-                t0 = time.perf_counter()
                 headers = {
                     "Authorization": f"Bearer {self._api_reranker_key}",
                     "Content-Type": "application/json",
                 }
-                
-                # Truncate texts to reduce payload size (fix 400 Bad Request)
-                max_text_length = 128
+
+                # Truncate texts to reduce payload size
+                max_text_length = int(os.getenv("R2AI_API_TRUNCATION", "2048"))
                 truncated_texts = [t[:max_text_length] for t in texts]
-                
+
                 payload = {
                     "model": self._api_reranker_model,
-                    "query": query[:200],  # Truncate query too
+                    "query": query[:200],
                     "documents": truncated_texts,
                 }
-                
+
                 response = requests.post(
                     self._api_reranker_url,
                     headers=headers,
                     json=payload,
-                    timeout=15,
+                    timeout=30,
                 )
                 response.raise_for_status()
                 result = response.json()
-                break  # Success, exit retry loop
-                
+                # Success: check if we should close circuit
+                _API_CIRCUIT_BREAKER["failures"] = 0
+                _API_CIRCUIT_BREAKER["first_failure_time"] = 0.0
+                break
+
             except requests.exceptions.HTTPError as exc:
                 last_error = exc
                 status_code = exc.response.status_code if exc.response else 0
                 if status_code == 400:
-                    print(f"[HybridReranker] API 400 Bad Request (attempt {attempt + 1}/{max_retries}). Payload too large or invalid format.")
+                    print(f"[HybridReranker] API 400 Bad Request (attempt {attempt + 1}/{max_retries}).")
                 elif status_code == 429:
                     print(f"[HybridReranker] API rate limited (attempt {attempt + 1}/{max_retries}).")
                 else:
                     print(f"[HybridReranker] API error {status_code} (attempt {attempt + 1}/{max_retries}).")
-                
+
                 if attempt < max_retries - 1:
                     delay = base_delay * (2 ** attempt)
                     print(f"[HybridReranker] Retrying in {delay:.1f}s...")
                     time.sleep(delay)
                 else:
-                    print(f"[HybridReranker] API rerank failed after {max_retries} attempts. Fallback to heuristic.")
+                    self._record_api_failure(now)
                     return candidates
             except Exception as exc:
                 last_error = exc
@@ -282,15 +302,15 @@ class HybridReranker:
                     delay = base_delay * (2 ** attempt)
                     time.sleep(delay)
                 else:
-                    print(f"[HybridReranker] API rerank failed after {max_retries} attempts. Fallback to heuristic.")
+                    self._record_api_failure(now)
                     return candidates
-        
+
         if result is None:
-            print(f"[HybridReranker] API rerank failed. Fallback to heuristic.")
+            self._record_api_failure(now)
             return candidates
-        
+
         api_time = time.perf_counter() - t0
-        
+
         # Extract scores from API response (SiliconFlow format)
         results = None
         if "results" in result:
@@ -299,43 +319,64 @@ class HybridReranker:
             results = result["output"]["results"]
         elif "data" in result:
             results = result["data"]
-        
+
         if not results:
             print(f"[HybridReranker] API response format unexpected: {list(result.keys())}")
+            self._record_api_failure(now)
             return candidates
-        
+
         # Map API results back to candidates
-        # SiliconFlow returns: [{"index": int, "relevance_score": float, "document": str}, ...]
         api_scores = {}
         for r in results:
             idx = r.get("index")
             if idx is not None:
                 api_scores[idx] = r.get("relevance_score", r.get("score", 0.0))
-        
-        # Normalize scores
-        scores = [api_scores.get(i, 0.0) for i in range(len(candidates))]
-        min_score = min(scores) if scores else 0.0
-        max_score = max(scores) if scores else 1.0
-        score_range = max(1e-8, max_score - min_score)
-        
+
+        # Blend: configurable weight between API and heuristic
         for i, context in enumerate(candidates):
             heuristic_score = float(context.get("final_score") or 0.0)
             api_score = api_scores.get(i, 0.0)
-            normalized_api = (api_score - min_score) / score_range
-            combined = (
-                self.heuristic_weight * heuristic_score
-                + self.cross_weight * normalized_api
-            )
             context["api_score"] = round(api_score, 4)
-            context["normalized_api_score"] = round(normalized_api, 4)
             context["heuristic_score"] = round(heuristic_score, 4)
-            context["final_score"] = round(combined, 6)
-        
+            context["final_score"] = round(api_weight * api_score + heuristic_weight * heuristic_score, 6)
+
         candidates.sort(key=lambda item: float(item["final_score"]), reverse=True)
-        print(f"[HybridReranker] API rerank: {len(candidates)} candidates in {api_time:.3f}s")
+
+        # Dynamic filter: retain candidates with scores above relative threshold
+        if candidates:
+            best_score = float(candidates[0]["final_score"])
+            kept: List[Dict[str, object]] = []
+            for c in candidates:
+                s = float(c["final_score"])
+                if s >= best_score * 0.30:
+                    kept.append(c)
+            if not kept:
+                kept = candidates[:1]
+            candidates = kept[:12]
+
+        print(f"[HybridReranker] API rerank: dynamic filter -> {len(candidates)} candidates in {api_time:.3f}s")
         if candidates:
             print(f"[HybridReranker] Top candidates: {', '.join(candidates[i].get('chunk_id', '?') + f':{candidates[i].get('final_score', 0):.3f}' for i in range(min(3, len(candidates))))}")
         return candidates
+
+    def _record_api_failure(self, now: float) -> None:
+        """Record API failure and potentially open circuit breaker."""
+        global _API_CIRCUIT_BREAKER
+        if _API_CIRCUIT_BREAKER["first_failure_time"] == 0.0:
+            _API_CIRCUIT_BREAKER["first_failure_time"] = now
+        elapsed = now - _API_CIRCUIT_BREAKER["first_failure_time"]
+
+        if elapsed > _CIRCUIT_BREAKER_WINDOW:
+            # Window expired, reset
+            _API_CIRCUIT_BREAKER["failures"] = 1
+            _API_CIRCUIT_BREAKER["first_failure_time"] = now
+        else:
+            _API_CIRCUIT_BREAKER["failures"] += 1
+
+        if _API_CIRCUIT_BREAKER["failures"] >= _CIRCUIT_BREAKER_THRESHOLD:
+            _API_CIRCUIT_BREAKER["open_until"] = now + _CIRCUIT_BREAKER_COOLDOWN
+            print(f"[HybridReranker] Circuit breaker OPEN ({_CIRCUIT_BREAKER_COOLDOWN:.0f}s cooldown).")
+        print(f"[HybridReranker] API failures: {_API_CIRCUIT_BREAKER['failures']}/{_CIRCUIT_BREAKER_THRESHOLD}")
 
     def rerank(
         self,
@@ -344,11 +385,26 @@ class HybridReranker:
         *,
         max_contexts: int | None = None,
     ) -> List[Dict[str, object]]:
-        """Two-stage rerank: heuristic filter then cross-encoder rerank."""
+        """Two-stage rerank: heuristic filter then cross-encoder/API rerank."""
         if not contexts:
             return []
 
         max_out = max_contexts if max_contexts is not None else self.max_contexts
+
+        # Skip heuristic entirely if flag is set (send all candidates to API)
+        if self._skip_heuristic:
+            if self._api_reranker_enabled and self._api_reranker_key:
+                try:
+                    t0 = time.perf_counter()
+                    api_results = self._api_rerank(query, list(contexts))
+                    api_time = time.perf_counter() - t0
+                    print(f"[HybridReranker] Skipped heuristic. API reranker: {len(api_results)} candidates in {api_time:.3f}s")
+                    return api_results[:max_out]
+                except Exception as exc:
+                    print(f"[HybridReranker] API rerank failed: {exc}. Using heuristic fallback.")
+            else:
+                print(f"[HybridReranker] Skip heuristic set but no API reranker configured. Using heuristic.")
+            # Fall through to normal flow if API unavailable or failed
 
         # Stage 1: Heuristic reranker (fast, filters to top-K)
         t0 = time.perf_counter()
@@ -365,6 +421,7 @@ class HybridReranker:
 
         # Stage 2: API or Cross-encoder rerank (accurate, on top-K only)
         if self._api_reranker_enabled and self._api_reranker_key:
+
             try:
                 t0 = time.perf_counter()
                 api_results = self._api_rerank(query, heuristic_results)

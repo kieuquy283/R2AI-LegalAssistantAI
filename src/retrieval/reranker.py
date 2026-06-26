@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import unicodedata
 from typing import Dict, List, Sequence
 
 from rag.modules.retrieval.utils import tokenize_for_bm25
 from src.retrieval.hybrid_retriever import GENERIC_TITLE_PENALTIES, SOURCE_CATEGORY_BOOSTS, TOPIC_RULES, _normalize_plain
 
+
+_DOC_NUM_RE = re.compile(r"\b(\d+(?:/\d+)*(?:-[A-Z]+)*/[A-Z0-9À-ỴĂÂĐÊÔƠƯ\-]+)\b")
 
 RELATION_BOOSTS = {
     "seed": 0.20,
@@ -18,8 +22,125 @@ RELATION_BOOSTS = {
     "neighbor": 0.05,
 }
 
+# Data-driven topic → penalty mapping
+_TOPIC_PENALTIES: dict[str, dict] = {
+    "tax_procedure": {
+        "penalty": -0.25,
+        "required": ["thue", "dang ky thue", "khai thue", "nop thue", "mien thue", "giam thue", "xoa tien thue no", "thuong mai dien tu"],
+    },
+    "tax_invoice": {
+        "penalty": -0.22,
+        "required": ["hoa don", "quan ly thue"],
+    },
+    "invoice_signature": {
+        "penalty": -0.28,
+        "required": ["hoa don", "dien tu", "chu ky so", "ma co quan thue", "119/2018", "68/2019", "123/2020"],
+    },
+    "labor_social": {
+        "penalty": -0.21,
+        "required": ["lao dong", "bao hiem xa hoi", "bo luat lao dong", "12/2022"],
+    },
+    "social_insurance_penalty": {
+        "penalty": -0.25,
+        "required": ["bao hiem xa hoi", "bhxh", "xu phat", "cham dong", "lao dong", "216", "38/2022"],
+    },
+    "ip": {
+        "penalty": -0.22,
+        "required": ["so huu tri tue", "quyen tac gia", "nhan hieu", "ten thuong mai", "65/2023"],
+    },
+    "copyright_registration": {
+        "penalty": -0.25,
+        "required": ["quyen tac gia", "ho so dang ky", "giay cam doan", "to khai", "ban sao tac pham", "50/2005"],
+    },
+    "dnnvv": {
+        "penalty": -0.25,
+        "required": ["doanh nghiep nho va vua", "uom tao", "khu lam viec chung", "80/2021", "39/2019"],
+    },
+    "dnnvv_procurement": {
+        "penalty": -0.25,
+        "required": ["doanh nghiep nho va vua", "dau thau", "80/2021", "uu dai"],
+    },
+    "enterprise": {
+        "penalty": -0.20,
+        "required": ["doanh nghiep", "cong ty", "hoi dong thanh vien", "quyet dinh", "co dong", "ban giam doc"],
+    },
+    "labor_leasing": {
+        "penalty": -0.20,
+        "required": ["cho thue lai lao dong", "ky quy", "cho thue lai", "lao dong"],
+    },
+}
+
+# Title-level penalties per topic
+_TOPIC_TITLE_PENALTIES: dict[str, dict] = {
+    "dnnvv_procurement": {"penalty": -0.30, "required": ["thu tuc hanh chinh"]},
+    "tax_procedure": {"penalty": -0.15, "required": ["thue", "quan ly thue", "dang ky thue", "khai thue", "cuong che", "thuong mai dien tu"]},
+    "invoice_signature": {"penalty": -0.17, "required": ["hoa don", "dien tu", "quan ly thue", "123/2020", "119/2018", "68/2019"]},
+    "social_insurance_penalty": {"penalty": -0.15, "required": ["bao hiem xa hoi", "xu phat"]},
+    "copyright_registration": {"penalty": -0.15, "required": ["quyen tac gia", "so huu tri tue", "ban quyen"]},
+    "enterprise": {"penalty": -0.15, "required": ["doanh nghiep", "cong ty", "tnhh", "dieu le", "quan tri"]},
+    "labor_leasing": {"penalty": -0.15, "required": ["cho thue lai lao dong", "ky quy", "lao dong"]},
+}
+
+# Min thresholds for heuristic filter (configurable via env vars)
+_HEURISTIC_MIN_FINAL = float(os.getenv("R2AI_HEURISTIC_MIN_FINAL", "0.06"))
+_HEURISTIC_MIN_LEXICAL = float(os.getenv("R2AI_HEURISTIC_MIN_LEXICAL", "0.04"))
+_HEURISTIC_MIN_TITLE = float(os.getenv("R2AI_HEURISTIC_MIN_TITLE", "0.03"))
+
 
 class Reranker:
+    @staticmethod
+    def _issuer_boost(doc_title: str, source_url: str, doc_number: str) -> float:
+        """Score based on issuer level: higher for national bodies, lower for provincial."""
+        normalized_tt = _normalize_plain(doc_title or "")
+        normalized_src = _normalize_plain(source_url or "") if source_url else ""
+        normalized_dn = _normalize_plain(doc_number or "")
+
+        # Provincial/local penalty
+        provincial_hints = ["tinh ", "ubnd", "hđnd", "huyen ", "xa ", "phuong ", "thi xa", "thanh pho "]
+        is_provincial = any(h in normalized_tt for h in provincial_hints) or any(h in normalized_src for h in provincial_hints)
+        # Avoid penalizing national docs whose title happens to mention a province
+        national_hints = ["luat", "bo luat", "nghi dinh", "thong tu ", "nghi quyet cua quoc hoi",
+                          "chi thi cua thu tuong", "quyet dinh cua thu tuong"]
+        is_national = any(h in normalized_tt for h in national_hints) or _DOC_NUM_RE.search(doc_number or "")
+        if is_provincial and not is_national:
+            return -0.25
+
+        # National Assembly: Luật, Nghị quyết của Quốc hội, Pháp lệnh của UBTVQH
+        if normalized_tt.startswith("luat ") or "cua quoc hoi" in normalized_tt:
+            return 0.20
+        if "phap lenh" in normalized_tt or "uy ban thuong vu quoc hoi" in normalized_tt:
+            return 0.20
+        if normalized_tt.startswith("nghi quyet ") and "quoc hoi" in normalized_tt:
+            return 0.20
+
+        # Check doc_number suffix
+        dn_match = _DOC_NUM_RE.search(doc_number or "")
+        dn_suffix = dn_match.group(1).split("/")[-1] if dn_match else ""
+        if dn_suffix in ("QH", "QH14", "QH15", "UBTVQH", "UBTVQH14", "UBTVQH15"):
+            return 0.20
+
+        # Government: Nghị định (CP), Quyết định Thủ tướng
+        if normalized_tt.startswith("nghi dinh ") or "nghi dinh cua chinh phu" in normalized_tt:
+            return 0.15
+        if "thu tuong" in normalized_tt or "thu tuong chinh phu" in normalized_tt:
+            return 0.15
+        if dn_suffix in ("ND-CP", "ND", "QD-TTg", "TTg"):
+            return 0.15
+
+        # Historical: HĐBT, HĐCP
+        if "hoi dong bo truong" in normalized_tt or "hoi dong chinh phu" in normalized_tt:
+            return 0.15
+        if dn_suffix in ("HDBT", "HDCP"):
+            return 0.15
+
+        # Ministry: Thông tư
+        if "thong tu " in normalized_tt:
+            return 0.05
+        if dn_suffix.startswith("TT-") or dn_suffix.startswith("TTLT-"):
+            return 0.05
+
+        return 0.0
+
     def _topic_profile(self, query: str) -> str | None:
         normalized_query = _normalize_plain(query)
         if "doanh nghiep nho va vua" in normalized_query and "dau thau" in normalized_query:
@@ -44,6 +165,10 @@ class Reranker:
             return "procurement_trade"
         if any(token in normalized_query for token in ["hai quan", "logistics", "xuat nhap khau", "thong quan"]):
             return "customs_logistics"
+        if any(token in normalized_query for token in ["cong ty", "doanh nghiep", "tnhh", "hoi dong thanh vien", "von dieu le", "co dong", "co phan"]):
+            return "enterprise"
+        if any(token in normalized_query for token in ["cho thue lai lao dong", "ky quy", "cho thue lai"]):
+            return "labor_leasing"
         return None
 
     def _combined_text(self, context: Dict[str, object]) -> str:
@@ -88,7 +213,7 @@ class Reranker:
             if str(part or "").strip()
         )
 
-        retrieval_score = float(context.get("retrieval_score") or context.get("score") or 0.0)
+        retrieval_score = float(context.get("retrieval_score") or context.get("score") or context.get("final_score") or 0.0)
         lexical_overlap = self.keyword_overlap_score(query, combined_text)
         title_match = self.keyword_overlap_score(query, title_text)
         citation_match = self.keyword_overlap_score(query, str(metadata.get("citation") or ""))
@@ -118,7 +243,7 @@ class Reranker:
             if preferred_domains and str(metadata.get("domain") or "") in preferred_domains:
                 topic_boost += 0.04
             if not required_hits and not title_phrases:
-                topic_boost -= max(0.75, float(rule.get("missing_penalty", 0.0)))
+                topic_boost -= max(0.20, float(rule.get("missing_penalty", 0.0)) * 0.3)
 
         if topic_profile:
             source_hints = SOURCE_CATEGORY_BOOSTS.get(topic_profile, [])
@@ -126,37 +251,17 @@ class Reranker:
                 topic_boost += 0.18
             generic_hits = [token for token in GENERIC_TITLE_PENALTIES.get(topic_profile, []) if token in normalized_title]
             if generic_hits:
-                topic_boost -= 0.85 + 0.15 * len(generic_hits)
+                topic_boost -= 0.20 + 0.05 * len(generic_hits)
 
-        if topic_profile == "tax_procedure" and all(token not in normalized_text for token in ["thue", "dang ky thue", "khai thue", "nop thue", "mien thue", "giam thue", "xoa tien thue no", "thuong mai dien tu"]):
-            topic_boost -= 1.0
-        if topic_profile == "tax_invoice" and "hoa don" not in normalized_text and "quan ly thue" not in normalized_text:
-            topic_boost -= 0.9
-        if topic_profile == "invoice_signature" and all(token not in normalized_text for token in ["hoa don", "dien tu", "chu ky so", "ma co quan thue", "119/2018", "68/2019", "123/2020"]):
-            topic_boost -= 1.15
-        if topic_profile == "labor_social" and all(token not in normalized_text for token in ["lao dong", "bao hiem xa hoi", "bo luat lao dong", "12/2022"]):
-            topic_boost -= 0.85
-        if topic_profile == "social_insurance_penalty" and all(token not in normalized_text for token in ["bao hiem xa hoi", "bhxh", "xu phat", "cham dong", "lao dong", "216", "38/2022"]):
-            topic_boost -= 1.1
-        if topic_profile == "ip" and all(token not in normalized_text for token in ["so huu tri tue", "quyen tac gia", "nhan hieu", "ten thuong mai", "65/2023"]):
-            topic_boost -= 0.95
-        if topic_profile == "copyright_registration" and all(token not in normalized_text for token in ["quyen tac gia", "ho so dang ky", "giay cam doan", "to khai", "ban sao tac pham", "50/2005"]):
-            topic_boost -= 1.05
-        if topic_profile == "dnnvv" and all(token not in normalized_text for token in ["doanh nghiep nho va vua", "uom tao", "khu lam viec chung", "80/2021", "39/2019"]):
-            topic_boost -= 1.0
-        if topic_profile == "dnnvv_procurement" and all(token not in normalized_text for token in ["doanh nghiep nho va vua", "dau thau", "80/2021", "uu dai"]):
-            topic_boost -= 1.1
-
-        if topic_profile == "dnnvv_procurement" and "thu tuc hanh chinh" in normalized_title:
-            topic_boost -= 1.2
-        if topic_profile == "tax_procedure" and all(token not in normalized_title for token in ["thue", "quan ly thue", "dang ky thue", "khai thue", "cuong che", "thuong mai dien tu"]):
-            topic_boost -= 0.55
-        if topic_profile == "invoice_signature" and all(token not in normalized_title for token in ["hoa don", "dien tu", "quan ly thue", "123/2020", "119/2018", "68/2019"]):
-            topic_boost -= 0.65
-        if topic_profile == "social_insurance_penalty" and "bao hiem xa hoi" not in normalized_title and "xu phat" not in normalized_title:
-            topic_boost -= 0.55
-        if topic_profile == "copyright_registration" and all(token not in normalized_title for token in ["quyen tac gia", "so huu tri tue", "ban quyen"]):
-            topic_boost -= 0.6
+        # Data-driven topic penalties (refactored from chain of if-else)
+        if topic_profile and topic_profile in _TOPIC_PENALTIES:
+            rule = _TOPIC_PENALTIES[topic_profile]
+            if all(t not in normalized_text for t in rule["required"]):
+                topic_boost += rule["penalty"]
+        if topic_profile and topic_profile in _TOPIC_TITLE_PENALTIES:
+            rule = _TOPIC_TITLE_PENALTIES[topic_profile]
+            if all(t not in normalized_title for t in rule["required"]):
+                topic_boost += rule["penalty"]
 
         domain_value = str(metadata.get("domain") or "")
         domain_match = 0.0
@@ -170,20 +275,33 @@ class Reranker:
         if metadata.get("source_url"):
             relation_boost += 0.02
 
-        if lexical_overlap < 0.08 and title_match < 0.08 and domain_match == 0.0 and topic_boost <= 0.0:
-            topic_boost -= 0.12
+        if lexical_overlap < 0.05 and title_match < 0.05 and domain_match == 0.0 and topic_boost <= -0.2:
+            topic_boost -= 0.05
 
         lexical_overlap = min(1.0, lexical_overlap)
         title_match = min(1.0, title_match)
 
+        # Issuer-level boost (national vs provincial)
+        doc_title_issuer = str(metadata.get("doc_title") or context.get("doc_title") or "")
+        source_url_issuer = str(metadata.get("source_url") or context.get("source_url") or "")
+        doc_number_str = str(metadata.get("doc_number") or context.get("doc_number") or "")
+        issuer_boost = self._issuer_boost(doc_title_issuer, source_url_issuer, doc_number_str)
+
+        # Penalize documents without a valid doc_number (e.g. news articles)
+        doc_number_penalty = 0.0
+        if not _DOC_NUM_RE.search(doc_number_str) and not _DOC_NUM_RE.search(doc_title_issuer):
+            doc_number_penalty = -0.08
+
         final_score = (
-            retrieval_score * 0.18
-            + lexical_overlap * 0.22
-            + title_match * 0.18
-            + citation_match * 0.06
-            + domain_match * 0.12
-            + relation_boost * 0.08
-            + topic_boost
+            retrieval_score * 0.35
+            + lexical_overlap * 0.18
+            + title_match * 0.15
+            + citation_match * 0.05
+            + domain_match * 0.10
+            + relation_boost * 0.07
+            + topic_boost * 0.25
+            + issuer_boost * 0.10
+            + doc_number_penalty
         )
         return {
             "retrieval_score": retrieval_score,
@@ -193,6 +311,8 @@ class Reranker:
             "domain_match": round(domain_match, 4),
             "topic_boost": round(topic_boost, 4),
             "relation_boost": round(relation_boost, 4),
+            "issuer_boost": round(issuer_boost, 4),
+            "doc_number_penalty": round(doc_number_penalty, 4),
             "final_score": round(max(0.0, final_score), 6),
         }
 
@@ -212,12 +332,20 @@ class Reranker:
             context["domain_match"] = scores["domain_match"]
             context["topic_boost"] = scores["topic_boost"]
             context["relation_boost"] = scores["relation_boost"]
+            context["issuer_boost"] = scores["issuer_boost"]
+            context["doc_number_penalty"] = scores["doc_number_penalty"]
             context["final_score"] = scores["final_score"]
-            if scores["final_score"] < 0.12 and scores["lexical_overlap"] < 0.05 and scores["title_match"] < 0.05:
+
+            # Filter: skip very low-score contexts (thresholds configurable via env vars)
+            if scores["final_score"] < _HEURISTIC_MIN_FINAL and scores["lexical_overlap"] < _HEURISTIC_MIN_LEXICAL and scores["title_match"] < _HEURISTIC_MIN_TITLE:
                 continue
             ranked.append(context)
 
         ranked.sort(key=lambda item: float(item["final_score"]), reverse=True)
+        if not ranked:
+            # Safeguard: keep at least the best-scoring context even if below threshold
+            all_sorted = sorted(deduped.values(), key=lambda x: float(x.get("final_score", 0)), reverse=True)
+            ranked = all_sorted[:1]
         return ranked[:max_contexts]
 
 

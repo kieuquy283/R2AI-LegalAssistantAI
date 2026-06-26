@@ -13,6 +13,26 @@ Vietnamese legal RAG chatbot for SME (small/medium enterprise) consulting.
 - **BM25**: SQLite + disk cache for fast warm load (~11s)
 - **Pipeline**: Singleton with pre-loaded BM25
 
+## Dataset Stats (after JSONL merge + enterprise/labor 2026-06-25)
+
+| Metric | Before | After |
+|---|---|---|
+| Vectors (npy) | 122,068 | **171,330** |
+| plus enterprise/labor (Kaggle GPU) | — | +1,049 |
+| **Qdrant total** | 122,068 | **172,379** |
+| Docs | 17,003 | **22,113** |
+| Added from JSONL | — | 48,505 arts / 5,110 docs |
+| Enterprise/labor articles | — | 910 + 155 = 1,049 |
+| Expired removed | 5,333 | 5,333 |
+
+## Environment
+
+- Windows, NVIDIA MX350 (2GB VRAM, not used — CPU-only)
+- PyTorch CPU-only
+- Qdrant via Docker on `localhost:6333`
+- HuggingFace cache: `D:\huggingface_cache`
+- API reranker: SiliconFlow (`https://api.siliconflow.com/v1/rank`)
+
 ## Key Changes (2024-06-13)
 
 ### 1. Prompt Optimization (Anti-Repetition)
@@ -29,57 +49,67 @@ Simplified user prompt to reduce duplication with system prompt.
 ### 2. New Domain: Land Law
 
 Files:
-- `data/sources/domain_taxonomy.json`: added `land_law` with keywords (đất đai, thuê đất, sử dụng đất, etc.)
+- `data/sources/domain_taxonomy.json`: added `land_law` domain
 - `data/sources/sources.yaml`: added `luatvietnam_land_law_search` source
-- `src/ingestion/hf_legal_filter_rules.py`: added `land_law` rule group + `administrative_penalty` rule group
+- `src/ingestion/hf_legal_filter_rules.py`: added `land_law` + `administrative_penalty` rules
 
-### 3. Data Collection Enhancement
+## Retrieval Optimization (2026-06-26)
 
-New rule groups in HF filter for missing domains:
-- `land_law`: Luật đất đai, thuê đất, quyền sử dụng đất
-- `administrative_penalty`: xử phạt vi phạm hành chính, mức phạt
+### Cross-Encoder Disabled
+- `BAAI/bge-reranker-v2-m3` cross-encoder took ~15s/query on CPU → disabled
+- Set `HYBRID_RERANKER_ENABLE_CROSS_ENCODER=false`
 
-To collect more data:
-```bash
-# 1. Filter HF dataset with new rules
-python -m src.ingestion.filter_hf_legal_dataset --output data/raw/hf_filtered_land_penalty.jsonl --limit 1000
+### Best Config Found (100-sample eval, seed=42)
+| Config | Overall | Coverage | Format | National | Avg Docs | Time |
+|--------|---------|----------|--------|----------|----------|------|
+| heuristic-only | **88.2** | 100% | 90.1% | 92.4% | 3.02 | ~1s/q |
+| **heuristic+kwexpand** | **89.0** | 100% | 92.4% | 93.4% | 3.02 | ~1s/q |
+| api+kwexpand | 84.2 | 100% | 89.0% | 84.0% | 2.37 | ~3s/q |
+| api-only | 85.2 | 100% | 89.0% | 87.0% | 2.46 | ~3s/q |
 
-# 2. Or crawl from LuatVietnam
-python -m src.ingestion.source_registry
-python -m src.ingestion.collect_urls --limit 20
-python -m src.ingestion.crawl_documents --limit 20
+**Best**: heuristic+kwexpand (heuristic-only + keyword expansion from labeled_dataset)
 
-# 3. Run full ingestion
-python -m scripts.run_ingestion --skip-crawl
-```
+### Full 2000 Run
+- **Config**: `HYBRID_RERANKER_ENABLE_CROSS_ENCODER=false`, `R2AI_USE_RRF=true`, `HYBRID_RERANKER_API_ENABLED=false`, `R2AI_USE_KEYWORD_EXPANSION=true`
+- **Time**: 22.8 minutes (2000 queries, ~0.68s/q)
+- **Coverage**: **100%** (0 empty)
+- **Format rate**: **100%** (0 bad entries) — post-filtered 437 malformed doc_keys (provincial docs without legal number), re-ran pipeline for affected entries
+- **National rate**: 93.3%
+- **Avg docs**: 1.96 (1.96 when found)
+- **Overall**: **~85** (slight drop due to filtering provincial docs)
+- **Output**: `data/processed/submission_parquet.json`
 
-## Eval Quality Status
+## Feature Flags (env vars)
 
-- **100 câu eval**: 30.9s/câu, 100% citations, 100% non-empty
-- **Route distribution**: PARENT_CONTEXT 72%, SIMPLE_VECTOR 16%, CROSS_DOMAIN 9%, LEGAL_GRAPH 3%
-- **Quality**: 55% excellent, 30% verbose/repetitive, 20% "not specified" answers
-- **Metrics**: comprehensive_eval scores 0% because no ground truth in eval data
+| Flag | Effect |
+|---|---|
+| `R2AI_USE_KEYWORD_EXPANSION=true` | Use `labeled_dataset_local.jsonl` keywords for query expansion |
+| `R2AI_FORCE_SIMPLE_ROUTE=true` | Disable adaptive routing, force SIMPLE_VECTOR |
+| `R2AI_DISABLE_ANSWER=true` | Skip answer generation, output empty answer field |
+| `R2AI_USE_RRF=true` | Reciprocal Rank Fusion thay vì weighted linear sum |
+| `HYBRID_RERANKER_SKIP_HEURISTIC=true` | Skip heuristic stage, send all candidates to API reranker |
+| `R2AI_RETRIEVAL_SKIP_EXPANSION=true` | Tắt hoàn toàn query expansion |
+| `HYBRID_RERANKER_ENABLE_CROSS_ENCODER=false` | Tắt cross-encoder model (rất chậm trên CPU) |
+| `HYBRID_RERANKER_API_ENABLED=false` | Tắt API reranker (SiliconFlow) |
+| `HYBRID_RERANKER_HEURISTIC_TOP_K=15` | Số candidate heuristic filter (default: 15) |
 
-## Next Steps
+## Performance Benchmarks
 
-1. **Run HF filter** with new rules to collect land/penalty docs
-2. **Ingest** new docs into Qdrant (or FAISS)
-3. **Re-run eval** with improved prompt to measure conciseness gain
-4. **Add ground truth** to eval data for meaningful metrics
+| Scenario | Time | Notes |
+|----------|------|-------|
+| Pipeline init | ~25s | Embedding model + BM25 preload (2-4s) |
+| Query with cross-encoder | ~16s | Too slow for production |
+| Query heuristic-only | ~1s | Default (recommended) |
+| Query with API reranker | ~3s | SiliconFlow API |
+| Full 2000 eval (heuristic) | 22.8 min | ~0.68s/q |
 
 ## Critical Files
 
 - `src/generation/prompt_builder.py` — prompt optimization
-- `src/ingestion/hf_legal_filter_rules.py` — data filtering rules
-- `data/sources/domain_taxonomy.json` — domain definitions
-- `data/sources/sources.yaml` — crawl sources
-- `scripts/run_qdrant_eval_100.py` — eval runner
+- `src/retrieval/query_expander.py` — query expansion (keyword-based from labeled_dataset_local.jsonl)
+- `src/retrieval/retrieval_pipeline.py` — retrieval pipeline with routing
+- `src/qa_pipeline.py` — main pipeline entry point
+- `data/processed/labeled_dataset_local.jsonl` — 1,995 labeled Q&A with `tu_khoa_phap_ly`
+- `data/evaluation/r2ai_stage1_questions.jsonl` — 2,000 eval questions
+- `data/processed/submission_parquet.json` — final output (2000 entries)
 - `data/cache/bm25_cache.pkl` + `data/cache/chunks.db` — BM25 cache
-
-## Environment
-
-- Windows, NVIDIA MX350 (2GB VRAM, not used — CPU-only)
-- PyTorch CPU-only
-- Qdrant via Docker on `localhost:6333`
-- HuggingFace cache: `D:\huggingface_cache`
-- API reranker: SiliconFlow (`https://api.siliconflow.com/v1/rank`)

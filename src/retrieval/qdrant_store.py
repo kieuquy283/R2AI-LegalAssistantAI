@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, HnswConfig, PointStruct, VectorParams
 
 from rag.config.runtime import RetrievalRuntimeConfig, get_retrieval_runtime_config
 
@@ -72,6 +72,15 @@ class QdrantStore:
             distance=_distance_from_name(self.config.qdrant_distance),
         )
 
+    def _hnsw_config(self) -> HnswConfig:
+        return HnswConfig(
+            ef_construct=self.config.hnsw_ef_construction,
+            m=self.config.hnsw_m,
+            ef_search=self.config.hnsw_ef_search,
+            on_disk=self.config.hnsw_on_disk,
+            full_scan_threshold=self.config.hnsw_full_scan_threshold,
+        )
+
     def recreate_collection(self, name: str) -> None:
         spec = self.collection_spec(name)
         if self.client.collection_exists(spec.name):
@@ -79,6 +88,7 @@ class QdrantStore:
         self.client.create_collection(
             collection_name=spec.name,
             vectors_config=VectorParams(size=spec.vector_size, distance=spec.distance),
+            hnsw_config=self._hnsw_config(),
         )
 
     def ensure_collection(self, name: str) -> None:
@@ -88,6 +98,7 @@ class QdrantStore:
         self.client.create_collection(
             collection_name=spec.name,
             vectors_config=VectorParams(size=spec.vector_size, distance=spec.distance),
+            hnsw_config=self._hnsw_config(),
         )
 
     def upsert_rows(

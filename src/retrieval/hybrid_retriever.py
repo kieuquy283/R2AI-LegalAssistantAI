@@ -200,6 +200,41 @@ TOPIC_RULES = [
         "missing_penalty": 0.22,
         "boost": 0.16,
     },
+    {
+        "name": "enterprise",
+        "keywords": [
+            "cong ty", "doanh nghiep", "tnhh", "hoi dong thanh vien",
+            "von dieu le", "co dong", "co phan", "quyet dinh",
+            "trieu tap hop", "bieu quyet", "uy quyen",
+        ],
+        "required_phrases": [
+            "doanh nghiep", "cong ty", "hoi dong thanh vien",
+            "ban giam doc", "co dong", "quyet dinh",
+        ],
+        "title_phrases": [
+            "doanh nghiep", "cong ty", "tnhh", "co phan",
+            "thanh lap", "quan tri", "dieu le",
+        ],
+        "preferred_domains": ["business_law", "enterprise_law"],
+        "missing_penalty": 0.15,
+        "boost": 0.20,
+    },
+    {
+        "name": "labor_leasing",
+        "keywords": [
+            "cho thue lai lao dong", "ky quy", "cho thue",
+            "lao dong", "thue lai",
+        ],
+        "required_phrases": [
+            "cho thue lai lao dong", "ky quy", "cho thue lai",
+        ],
+        "title_phrases": [
+            "cho thue lai lao dong", "lao dong", "ky quy",
+        ],
+        "preferred_domains": ["labor_law", "business_law"],
+        "missing_penalty": 0.15,
+        "boost": 0.18,
+    },
 ]
 
 PHRASE_GUARDS = [
@@ -222,6 +257,8 @@ GENERIC_TITLE_PENALTIES = {
     "invoice_signature": ["hoan thue", "thue tncn", "thue gtgt", "xuat khau", "nhap khau"],
     "labor_social": ["muc luong toi thieu", "thoi gio lam viec", "nghi ngoi doi voi lao dong thoi vu", "nguoi lao dong viet nam di lam viec o nuoc ngoai"],
     "social_insurance_penalty": ["hop dong lao dong", "muc luong toi thieu", "thoi gio lam viec", "bao hiem that nghiep"],
+    "enterprise": ["thu tuc hanh chinh", "mot cua", "dang ky kinh doanh", "bao lanh tin dung"],
+    "labor_leasing": ["thue", "hoa don", "ke toan", "bao hiem xa hoi", "quan ly thue"],
     "ip": [
         "dau tu von nha nuoc",
         "quy phat trien doanh nghiep nho va vua",

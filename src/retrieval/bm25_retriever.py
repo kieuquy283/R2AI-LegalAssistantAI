@@ -15,6 +15,10 @@ from typing import Any, Sequence
 
 from src.ingestion.common import read_jsonl
 from rag.modules.retrieval.utils import tokenize_for_bm25
+import portalocker
+
+_BM25_K1 = float(os.getenv("R2AI_BM25_K1", "1.5"))
+_BM25_B = float(os.getenv("R2AI_BM25_B", "0.75"))
 
 
 # Try orjson for faster JSON parsing
@@ -60,12 +64,12 @@ def _file_hash(path: Path) -> str:
 
 
 class _FastBM25:
-    def __init__(self, corpus_tokens: Sequence[Sequence[str]]) -> None:
+    def __init__(self, corpus_tokens: Sequence[Sequence[str]], *, k1: float | None = None, b: float | None = None) -> None:
         self.corpus_tokens = [list(tokens) for tokens in corpus_tokens]
         self.doc_lengths = [len(tokens) for tokens in self.corpus_tokens]
         self.avgdl = sum(self.doc_lengths) / max(len(self.doc_lengths), 1)
-        self.k1 = 1.5
-        self.b = 0.75
+        self.k1 = k1 if k1 is not None else _BM25_K1
+        self.b = b if b is not None else _BM25_B
         self.doc_freq: dict[str, int] = {}
         self.postings: dict[str, list[tuple[int, int]]] = defaultdict(list)
         for doc_idx, tokens in enumerate(self.corpus_tokens):
@@ -147,7 +151,9 @@ class BM25Retriever:
         try:
             current_hash = _file_hash(self.chunks_path)
             with open(self._cache_path, "rb") as f:
+                portalocker.lock(f, portalocker.LOCK_SH)
                 data = pickle.loads(zlib.decompress(f.read()))
+                portalocker.unlock(f)
             if data.get("file_hash") != current_hash:
                 print(f"[BM25] Cache stale (hash mismatch), rebuilding...")
                 return False
@@ -156,12 +162,12 @@ class BM25Retriever:
             self._bm25.num_docs = data["num_docs"]
             self._bm25.doc_lengths = data["doc_lengths"]
             self._bm25.avgdl = data["avgdl"]
-            self._bm25.k1 = data["k1"]
-            self._bm25.b = data["b"]
+            self._bm25.k1 = data.get("k1", _BM25_K1)  # fallback for legacy cache
+            self._bm25.b = data.get("b", _BM25_B)
             self._bm25.doc_freq = data["doc_freq"]
             self._bm25.postings = defaultdict(list, data["postings"])
             self._cache_loaded = True
-            print(f"[BM25] Loaded cached index: {self._bm25.num_docs} docs, {len(self._bm25.doc_freq)} terms from {self._cache_path}")
+            print(f"[BM25] Loaded cached index: {self._bm25.num_docs} docs, {len(self._bm25.doc_freq)} terms (k1={self._bm25.k1}, b={self._bm25.b})")
             return True
         except Exception as exc:
             print(f"[BM25] Cache load failed: {exc}. Will rebuild.")
@@ -182,14 +188,53 @@ class BM25Retriever:
                 "b": self._bm25.b,
                 "doc_freq": self._bm25.doc_freq,
                 "postings": dict(self._bm25.postings),
+                "_bm25_params_version": 2,
             }
             compressed = zlib.compress(pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL))
             with open(self._cache_path, "wb") as f:
+                portalocker.lock(f, portalocker.LOCK_EX)
                 f.write(compressed)
+                portalocker.unlock(f)
             cache_size_mb = len(compressed) / 1024 / 1024
             print(f"[BM25] Saved cached index ({cache_size_mb:.1f} MB) to {self._cache_path}")
         except Exception as exc:
             print(f"[BM25] Cache save failed: {exc}")
+
+    def _build_bm25_from_rows(self, rows: list[dict]) -> _FastBM25:
+        from rag.modules.retrieval.utils import tokenize_for_bm25
+        corpus_tokens = []
+        for i, row in enumerate(rows):
+            if i % 50000 == 0:
+                print(f"[BM25] Tokenizing {i}/{len(rows)}...", flush=True)
+            corpus_tokens.append(tokenize_for_bm25(_normalize_text(self._combined_text(row))))
+        return _FastBM25(corpus_tokens)
+
+    def _build_bm25_from_sqlite(self) -> _FastBM25:
+        print(f"[BM25] Building index from SQLite ({self._sqlite_db_path})...", flush=True)
+        import sqlite3
+        conn = sqlite3.connect(self._sqlite_db_path)
+        conn.row_factory = sqlite3.Row
+        count = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+        rows = []
+        batch_size = 10000
+        offset = 0
+        while offset < count:
+            cursor = conn.execute(
+                f"SELECT * FROM chunks ORDER BY row_idx LIMIT {batch_size} OFFSET {offset}"
+            )
+            for row in cursor:
+                row_dict = dict(row)
+                metadata = row_dict.get("metadata")
+                if metadata:
+                    try:
+                        row_dict["metadata"] = json.loads(metadata)
+                    except Exception:
+                        row_dict["metadata"] = {}
+                rows.append(row_dict)
+            offset += batch_size
+            print(f"[BM25] SQLite rows loaded: {len(rows)}/{count}", flush=True)
+        conn.close()
+        return self._build_bm25_from_rows(rows)
 
     def preload(self) -> None:
         """Trigger eager loading of BM25 index. Call at startup for pre-warm."""
@@ -199,14 +244,15 @@ class BM25Retriever:
         if self._cache_loaded:
             return
         
-        # Load BM25 index only (no rows needed with SQLite)
         if not self._cache_loaded:
             self._try_load_cache()
         
-        if self._bm25 is None:
-            # Build from scratch
-            print(f"[BM25] Building index from {self.chunks_path}...")
-            _ = self.bm25  # Trigger property load (reads rows as side effect)
+        if self._bm25 is None and self._use_sqlite and self._sqlite_db_path.exists():
+            self._bm25 = self._build_bm25_from_sqlite()
+            self._save_cache()
+        elif self._bm25 is None:
+            print(f"[BM25] Building index from {self.chunks_path}...", flush=True)
+            _ = self.bm25
             self._save_cache()
         
         t1 = time.perf_counter()

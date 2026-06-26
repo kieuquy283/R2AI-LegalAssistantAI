@@ -4,7 +4,7 @@ import logging
 import re
 from typing import Any, Sequence
 
-from qdrant_client.models import Filter, FieldCondition, MatchAny
+from qdrant_client.models import SearchParams
 from rag.config.runtime import RetrievalRuntimeConfig, get_retrieval_runtime_config
 from rag.retrieval.vectorstore import get_embeddings
 from src.retrieval.qdrant_store import QdrantStore
@@ -12,7 +12,7 @@ from src.retrieval.qdrant_store import QdrantStore
 _log = logging.getLogger(__name__)
 
 
-LEGAL_REF_PATTERN = re.compile(r"\b\d+(?:/\d+)+/[A-Z0-9À-ỴĂÂĐÊÔƠƯ\-]+\b", re.IGNORECASE)
+LEGAL_REF_PATTERN = re.compile(r"\b\d+(?:/\d+)*(?:-[A-Z]+)*/[A-Z0-9À-ỴĂÂĐÊÔƠƯ\-]+\b", re.IGNORECASE)
 
 _DOMAIN_KEYWORDS: dict[str, list[str]] = {
     "labor": [
@@ -377,17 +377,12 @@ class QdrantRetriever:
         if not self._check_collection_exists(collection_name):
             return []
         
-        # Build Qdrant filter for domain matching if preferred_domains is provided
+        # Domain filter is NOT applied at Qdrant level — most collections (e.g.
+        # legal_parquet_v2) lack a 'domain' payload field, causing filter to
+        # match zero results. Post-filtering via _allowed_domain() handles this.
         qdrant_filter = None
-        if preferred_domains:
-            qdrant_filter = Filter(
-                must=[
-                    FieldCondition(
-                        key="domain",
-                        match=MatchAny(any=list(preferred_domains))
-                    )
-                ]
-            )
+
+        search_params = SearchParams(hnsw_ef=self.config.hnsw_ef_search)
 
         try:
             return list(
@@ -398,6 +393,7 @@ class QdrantRetriever:
                     query_filter=qdrant_filter,
                     with_payload=True,
                     with_vectors=False,
+                    search_params=search_params,
                 )
             )
         except Exception:
@@ -409,6 +405,7 @@ class QdrantRetriever:
                     query_filter=qdrant_filter,
                     with_payload=True,
                     with_vectors=False,
+                    search_params=search_params,
                 )
                 return list(getattr(result, "points", []) or [])
             except Exception as exc:
@@ -416,21 +413,32 @@ class QdrantRetriever:
                 return []
 
     def _make_candidate(self, *, level: str, hit: Any, query: str) -> dict[str, Any]:
-        # Handle both Qdrant v0.x (direct payload) and v1.x (nested payload)
         raw_payload = getattr(hit, "payload", None) or {}
         if isinstance(raw_payload, dict) and "payload" in raw_payload:
             payload = dict(raw_payload["payload"])
         else:
             payload = dict(raw_payload)
         
-        # Extract score from Qdrant hit (try multiple attribute names)
         raw_dense_score = 0.0
         for attr in ("score", "vector_distance", "distance"):
             val = getattr(hit, attr, None)
             if val is not None:
                 raw_dense_score = float(val)
                 break
+        
+        # Handle legal_parquet_v2 schema (article_title/article_content instead of article/content)
+        article_title = str(payload.get("article_title") or "").strip()
+        article_content = str(payload.get("article_content") or "").strip()
         article = str(payload.get("article") or "").strip()
+        content = str(payload.get("content") or payload.get("cleaned_text") or payload.get("embedding_text") or "").strip()
+        if not article and article_title:
+            # Extract "Điều 1" from "Điều 1. Phạm vi điều chỉnh"
+            import re as _re
+            m = _re.match(r'(Điều\s+\d+(?:-\d+)?)', article_title)
+            article = m.group(1) if m else article_title
+        if not content and article_content:
+            content = article_content
+        
         candidate_id = str(
             payload.get("chunk_id")
             or payload.get("node_id")
@@ -438,10 +446,19 @@ class QdrantRetriever:
             or payload.get("id")
             or ""
         ).strip()
-        citation = str(payload.get("citation") or payload.get("title") or payload.get("doc_title") or "").strip()
-        doc_number = str(payload.get("doc_number") or "").strip()
         doc_title = str(payload.get("doc_title") or payload.get("title") or "").strip()
-        content = str(payload.get("content") or payload.get("cleaned_text") or payload.get("embedding_text") or "").strip()
+        doc_number = str(payload.get("doc_number") or "").strip()
+        citation = str(payload.get("citation") or payload.get("title") or doc_title or "").strip()
+        if not citation:
+            citation = f"{doc_title}, {article_title}" if article_title else doc_title
+        
+        # Domain from tag_1/tag_2 (legal_parquet_v2) or domain field
+        domain = str(payload.get("domain") or "").strip()
+        if not domain:
+            domain = str(payload.get("tag_1") or payload.get("tag_2") or "").strip()
+        
+        source_url = str(payload.get("source_url") or payload.get("source") or "").strip()
+        
         legal_ref_match = 1.0 if doc_number and LEGAL_REF_PATTERN.search(query) and doc_number in query else 0.0
         return {
             "candidate_id": f"{level}:{candidate_id}",
@@ -469,8 +486,8 @@ class QdrantRetriever:
             "article": article,
             "clause": str(payload.get("clause") or "").strip(),
             "citation": citation,
-            "domain": str(payload.get("domain") or "").strip(),
-            "source_url": str(payload.get("source_url") or "").strip(),
+            "domain": domain,
+            "source_url": source_url,
             "content": content,
             "source_dataset": str(payload.get("source_dataset") or "local_corpus"),
             "priority": int(payload.get("priority") or 0),
@@ -479,24 +496,20 @@ class QdrantRetriever:
 
     def search(self, query: str, *, preferred_domains: Sequence[str] | None = None) -> list[dict[str, Any]]:
         query_vector = list(self.embeddings.embed_query(query))
-        specs = [
-            ("doc", self.config.qdrant_collection_docs, max(self.config.candidate_k_docs * 2, self.config.candidate_k_docs)),
-            ("chunk", self.config.qdrant_collection_chunks, max(self.config.candidate_k_chunks * 2, self.config.candidate_k_chunks)),
-        ]
-        if self._articles_available:
-            specs.insert(
-                1,
-                (
-                    "article",
-                    self.config.qdrant_collection_articles,
-                    max(self.config.candidate_k_articles * 2, self.config.candidate_k_articles),
-                ),
-            )
+        specs = []
+        if self._articles_available and self.config.candidate_k_articles > 0 and self.config.qdrant_collection_articles.strip():
+            limit = max(self.config.candidate_k_articles * 2, self.config.candidate_k_articles)
+            specs.append(("article", self.config.qdrant_collection_articles.strip(), limit))
+        if self.config.candidate_k_docs > 0 and self.config.qdrant_collection_docs.strip():
+            limit = max(self.config.candidate_k_docs * 2, self.config.candidate_k_docs)
+            specs.append(("doc", self.config.qdrant_collection_docs.strip(), limit))
+        if self.config.candidate_k_chunks > 0 and self.config.qdrant_collection_chunks.strip():
+            limit = max(self.config.candidate_k_chunks * 2, self.config.candidate_k_chunks)
+            specs.append(("chunk", self.config.qdrant_collection_chunks.strip(), limit))
         candidates: list[dict[str, Any]] = []
         for level, collection_name, limit in specs:
             for hit in self._query_collection(collection_name, query_vector, limit, preferred_domains):
                 payload = dict(getattr(hit, "payload", None) or {})
-                # Keep Python-level fallback check just in case
                 if not self._allowed_domain(payload, preferred_domains):
                     continue
                 candidates.append(self._make_candidate(level=level, hit=hit, query=query))

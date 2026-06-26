@@ -29,7 +29,7 @@ class TestAnswerGenerator(unittest.TestCase):
         self.assertIn("KhÃ´ng bá»‹a", prompt["system_prompt"])
         self.assertIn("CÄƒn cá»© phÃ¡p luáº­t", prompt["user_prompt"])
 
-    def test_answer_is_single_paragraph_without_legal_basis_section(self):
+    def test_answer_has_four_sections_with_citations(self):
         retrieval_result = {
             "route": "PARENT_CONTEXT",
             "domains": ["business_law"],
@@ -48,8 +48,10 @@ class TestAnswerGenerator(unittest.TestCase):
         }
         result = AnswerGenerator().generate(query="Ai khong duoc thanh lap doanh nghiep?", retrieval_result=retrieval_result)
         self.assertTrue(result["answer"])
-        self.assertNotIn("Căn cứ pháp luật", result["answer"])
-        self.assertNotIn("\n", result["answer"])
+        self.assertIn("1. Kết luận ngắn", result["answer"])
+        self.assertIn("2. Căn cứ pháp luật", result["answer"])
+        self.assertIn("3. Phân tích áp dụng", result["answer"])
+        self.assertIn("4. Việc SME nên làm", result["answer"])
         self.assertTrue(result["citations"])
         self.assertEqual(result["generation_mode"], "template")
 
