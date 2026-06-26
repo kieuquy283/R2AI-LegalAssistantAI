@@ -206,9 +206,9 @@ class RetrievalPipeline:
             "final_contexts": final_contexts,
         }
 
-    def _retrieve_single(self, q: str, preferred_domains: list[str]) -> Dict[str, List]:
+    def _retrieve_single(self, q: str, preferred_domains: list[str], difficulty: str = "mid") -> Dict[str, List]:
         """Run dense + sparse + exact for a single query variant."""
-        dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains) if self.qdrant_retriever else []
+        dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains, difficulty=difficulty) if self.qdrant_retriever else []
         sparse = (
             self.bm25_retriever.search(q, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
             if self.bm25_retriever
@@ -299,7 +299,7 @@ class RetrievalPipeline:
         t_retrieval_start = time.perf_counter()
         if _USE_PARALLEL_RETRIEVAL and len(queries) > 1:
             with ThreadPoolExecutor(max_workers=min(len(queries), 4)) as executor:
-                fut_to_q = {executor.submit(self._retrieve_single, q, preferred_domains): q for q in queries}
+                fut_to_q = {executor.submit(self._retrieve_single, q, preferred_domains, difficulty): q for q in queries}
                 for fut in as_completed(fut_to_q):
                     q = fut_to_q[fut]
                     try:
@@ -313,7 +313,7 @@ class RetrievalPipeline:
             for q in queries:
                 if q == expanded_query:
                     # First query is the primary one
-                    dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains) if self.qdrant_retriever else []
+                    dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains, difficulty=difficulty) if self.qdrant_retriever else []
                     all_dense.extend(dense)
                 sparse = (
                     self.bm25_retriever.search(q, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
@@ -408,7 +408,7 @@ class RetrievalPipeline:
         if refined_query and refined_query != query:
             print(f"[CRAG] Re-retrieving with refined query: '{refined_query[:100]}...'")
             q2 = expand_query(refined_query, difficulty=difficulty)
-            crag_res = self._retrieve_single(q2, preferred_domains)
+            crag_res = self._retrieve_single(q2, preferred_domains, difficulty)
             apply_domain_adjustment(q2, crag_res["dense"])
             crag_reranked = fuse_candidates(
                 q2,

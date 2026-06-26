@@ -181,6 +181,17 @@ Files:
 - Thêm `score_threshold=0.25` vào cả `client.search()` và `query_points()` — lọc nhiễu sớm
 - Tăng `CANDIDATE_K_ARTICLES=150` → `CANDIDATE_K_ARTICLES=250`
 
+**Qdrant Dynamic HNSW** (`qdrant_retriever.py` + `retrieval_pipeline.py`):
+- `search()` nhận thêm `difficulty` param
+- HNSW ef_search và score_threshold thay đổi theo difficulty:
+  | Difficulty | ef_search | score_threshold | Lý do |
+  |---|---|---|---|
+  | easy | 128 | 0.30 | Nhanh, ít noise |
+  | mid | 128 | 0.25 | Cân bằng |
+  | hard | 192 | 0.20 | Recall cao hơn |
+  | very_hard | 256 | 0.15 | Recall tối đa |
+- Limit tăng lên 2000 — HNSW tự động dừng theo threshold
+
 **Fusion Weights** (`hybrid_fusion.py`):
 - `lexical_overlap` coefficient: 0.05 → **0.08** (từ khoá trùng quan trọng hơn)
 - `wrong_domain_penalty` multiplier: 1.0 → **1.5** (phạt domain sai mạnh hơn)

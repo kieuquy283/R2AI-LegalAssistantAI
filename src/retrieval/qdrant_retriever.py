@@ -372,6 +372,8 @@ class QdrantRetriever:
         query_vector: list[float], 
         limit: int,
         preferred_domains: Sequence[str] | None = None,
+        score_threshold: float = 0.25,
+        hnsw_ef: int | None = None,
     ) -> list[Any]:
         # Skip if collection does not exist
         if not self._check_collection_exists(collection_name):
@@ -382,7 +384,7 @@ class QdrantRetriever:
         # match zero results. Post-filtering via _allowed_domain() handles this.
         qdrant_filter = None
 
-        search_params = SearchParams(hnsw_ef=self.config.hnsw_ef_search)
+        search_params = SearchParams(hnsw_ef=hnsw_ef or self.config.hnsw_ef_search)
 
         try:
             return list(
@@ -394,7 +396,7 @@ class QdrantRetriever:
                     with_payload=True,
                     with_vectors=False,
                     search_params=search_params,
-                    score_threshold=0.25,
+                    score_threshold=score_threshold,
                 )
             )
         except Exception:
@@ -407,7 +409,7 @@ class QdrantRetriever:
                     with_payload=True,
                     with_vectors=False,
                     search_params=search_params,
-                    score_threshold=0.25,
+                    score_threshold=score_threshold,
                 )
                 return list(getattr(result, "points", []) or [])
             except Exception as exc:
@@ -496,21 +498,28 @@ class QdrantRetriever:
             "metadata": payload,
         }
 
-    def search(self, query: str, *, preferred_domains: Sequence[str] | None = None) -> list[dict[str, Any]]:
+    def search(self, query: str, *, preferred_domains: Sequence[str] | None = None, difficulty: str = "mid") -> list[dict[str, Any]]:
         query_vector = list(self.embeddings.embed_query(query))
+        # Dynamic HNSW params based on difficulty
+        hnsw_ef_map = {"easy": 128, "mid": 128, "hard": 192, "very_hard": 256}
+        threshold_map = {"easy": 0.30, "mid": 0.25, "hard": 0.20, "very_hard": 0.15}
+        hnsw_ef = hnsw_ef_map.get(difficulty, 128)
+        score_threshold = threshold_map.get(difficulty, 0.25)
+        # Use large limit — HNSW stops early via score_threshold
+        large_limit = 2000
         specs = []
         if self._articles_available and self.config.candidate_k_articles > 0 and self.config.qdrant_collection_articles.strip():
-            limit = max(self.config.candidate_k_articles * 2, self.config.candidate_k_articles)
+            limit = max(self.config.candidate_k_articles * 2, large_limit)
             specs.append(("article", self.config.qdrant_collection_articles.strip(), limit))
         if self.config.candidate_k_docs > 0 and self.config.qdrant_collection_docs.strip():
-            limit = max(self.config.candidate_k_docs * 2, self.config.candidate_k_docs)
+            limit = max(self.config.candidate_k_docs * 2, large_limit)
             specs.append(("doc", self.config.qdrant_collection_docs.strip(), limit))
         if self.config.candidate_k_chunks > 0 and self.config.qdrant_collection_chunks.strip():
-            limit = max(self.config.candidate_k_chunks * 2, self.config.candidate_k_chunks)
+            limit = max(self.config.candidate_k_chunks * 2, large_limit)
             specs.append(("chunk", self.config.qdrant_collection_chunks.strip(), limit))
         candidates: list[dict[str, Any]] = []
         for level, collection_name, limit in specs:
-            for hit in self._query_collection(collection_name, query_vector, limit, preferred_domains):
+            for hit in self._query_collection(collection_name, query_vector, limit, preferred_domains, score_threshold, hnsw_ef):
                 payload = dict(getattr(hit, "payload", None) or {})
                 if not self._allowed_domain(payload, preferred_domains):
                     continue
