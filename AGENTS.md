@@ -1,4 +1,4 @@
-# R2AI Legal AI Assistant — Agent Notes
+﻿# R2AI Legal AI Assistant — Agent Notes
 
 ## Project Context
 

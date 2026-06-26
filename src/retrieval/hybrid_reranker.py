@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import logging
@@ -378,18 +378,55 @@ class HybridReranker:
             print(f"[HybridReranker] Circuit breaker OPEN ({_CIRCUIT_BREAKER_COOLDOWN:.0f}s cooldown).")
         print(f"[HybridReranker] API failures: {_API_CIRCUIT_BREAKER['failures']}/{_CIRCUIT_BREAKER_THRESHOLD}")
 
+    # Difficulty-to-heuristic_top_k map for adaptive recall
+    _DIFFICULTY_TOPK_MAP = {
+        "easy": 10,
+        "mid": 25,
+        "hard": 60,
+        "very_hard": 120,
+    }
+
+    def _get_effective_top_k(self, difficulty: str | None) -> int:
+        if difficulty and difficulty in self._DIFFICULTY_TOPK_MAP:
+            return self._DIFFICULTY_TOPK_MAP[difficulty]
+        return self.heuristic_top_k
+
+    def _consensus_pre_filter(
+        self,
+        contexts: List[Dict[str, object]],
+    ) -> List[Dict[str, object]]:
+        result = []
+        for c in contexts:
+            dense = float(c.get("dense_score") or 0.0)
+            sparse = float(c.get("bm25_score") or 0.0)
+            exact = float(c.get("exact_score") or 0.0)
+            sources = sum(1 for s in [dense, sparse, exact] if s > 0)
+            consensus = sources / 3.0
+            c["consensus_score"] = round(consensus, 4)
+            raw_fusion = float(c.get("final_score") or 0.0)
+            c["raw_fusion_score"] = round(raw_fusion, 6)
+            c["final_score"] = round(0.6 * raw_fusion + 0.4 * consensus, 6)
+            result.append(c)
+        result.sort(key=lambda x: float(x.get("final_score") or 0.0), reverse=True)
+        return result
+
     def rerank(
         self,
         query: str,
         contexts: Sequence[Dict[str, object]],
         *,
         max_contexts: int | None = None,
+        difficulty: str | None = None,
     ) -> List[Dict[str, object]]:
-        """Two-stage rerank: heuristic filter then cross-encoder/API rerank."""
+        """Two-stage rerank: consensus pre-filter → heuristic → cross-encoder/API."""
         if not contexts:
             return []
 
         max_out = max_contexts if max_contexts is not None else self.max_contexts
+        effective_top_k = self._get_effective_top_k(difficulty)
+
+        # Consensus pre-filter: boost multi-source matches before heuristic cutoff
+        contexts = self._consensus_pre_filter(list(contexts))
 
         # Skip heuristic entirely if flag is set (send all candidates to API)
         if self._skip_heuristic:
@@ -411,7 +448,7 @@ class HybridReranker:
         heuristic_results = self.heuristic.rerank(
             query,
             contexts,
-            max_contexts=self.heuristic_top_k,
+            max_contexts=effective_top_k,
         )
         heuristic_time = time.perf_counter() - t0
         print(f"[HybridReranker] Heuristic: {len(contexts)} -> {len(heuristic_results)} candidates in {heuristic_time:.3f}s")

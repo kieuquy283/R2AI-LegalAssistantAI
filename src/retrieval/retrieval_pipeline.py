@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -31,6 +31,10 @@ _USE_MULTI_QUERY = os.getenv("R2AI_USE_MULTI_QUERY", "true").strip().lower() in 
 _USE_CRAG = os.getenv("R2AI_USE_CRAG", "true").strip().lower() in {"1", "true", "yes"}
 _USE_PARALLEL_RETRIEVAL = os.getenv("R2AI_USE_PARALLEL_RETRIEVAL", "true").strip().lower() in {"1", "true", "yes"}
 _CRAG_MIN_CONTEXTS = int(os.getenv("R2AI_CRAG_MIN_CONTEXTS", "2"))
+
+def _get_crag_min_contexts(difficulty: str) -> int:
+    mapping = {"easy": -1, "mid": 2, "hard": 3, "very_hard": 4}
+    return mapping.get(difficulty, 2)
 
 
 def _generate_multi_queries(query: str, difficulty: str) -> List[str]:
@@ -68,9 +72,16 @@ def _generate_multi_queries(query: str, difficulty: str) -> List[str]:
     return [query]
 
 
-def _crag_refine_query(initial_query: str, initial_contexts: List[Dict]) -> str | None:
+def _crag_refine_query(initial_query: str, initial_contexts: List[Dict], *, difficulty: str = "mid", best_score: float = 0.0) -> str | None:
     """Task 5: If too few contexts, refine query for re-retrieval."""
-    if not _USE_CRAG or len(initial_contexts) >= _CRAG_MIN_CONTEXTS:
+    min_ctx = _get_crag_min_contexts(difficulty)
+    if not _USE_CRAG:
+        return None
+    if min_ctx >= 0 and len(initial_contexts) >= min_ctx:
+        # Quality gate: fire if best_score too low even if count is sufficient
+        if best_score >= 0.15:
+            return None
+    if min_ctx < 0 and best_score >= 0.15:
         return None
     client = LLMClient(temperature=0.0)
     if not client.is_available():
@@ -386,7 +397,7 @@ class RetrievalPipeline:
             if not self.reranker:
                 self.reranker = HybridReranker()
             rerank_max = self.runtime_config.candidate_k_chunks or self.runtime_config.candidate_k_articles or self.runtime_config.rerank_top_n or 50
-            reranked = self.reranker.rerank(query, reranked, max_contexts=rerank_max)
+            reranked = self.reranker.rerank(query, reranked, max_contexts=rerank_max, difficulty=difficulty)
             t_rerank = time.perf_counter() - rerank_start
         else:
             t_rerank = 0.0
@@ -400,10 +411,11 @@ class RetrievalPipeline:
         )
         t_select = time.perf_counter() - t_select_start
 
-        # Task 5: CRAG — refine and re-retrieve if too few contexts
+        # Task 5: Smart CRAG — refine and re-retrieve if too few contexts or low quality
         crag_used = False
-        refined_query = _crag_refine_query(query, final_contexts)
-        if refined_query and refined_query != query:
+        best_score = max((float(c.get("final_score") or 0.0) for c in reranked), default=0.0) if reranked else 0.0
+        refined_query = _crag_refine_query(expanded_query, final_contexts, difficulty=difficulty, best_score=best_score)
+        if refined_query and refined_query != expanded_query:
             print(f"[CRAG] Re-retrieving with refined query: '{refined_query[:100]}...'")
             q2 = expand_query(refined_query, difficulty=difficulty)
             crag_res = self._retrieve_single(q2, preferred_domains, difficulty)
