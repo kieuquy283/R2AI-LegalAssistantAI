@@ -175,6 +175,32 @@ Files:
 - Reports: coverage, low_confidence count, CRAG usage, avg contexts/docs/time
 - Seed=42 for reproducible sampling
 
+### F2 Optimization Phase 2 (2026-06-26)
+
+**Qdrant Dense Search** (`qdrant_retriever.py`):
+- Thêm `score_threshold=0.25` vào cả `client.search()` và `query_points()` — lọc nhiễu sớm
+- Tăng `CANDIDATE_K_ARTICLES=150` → `CANDIDATE_K_ARTICLES=250`
+
+**Fusion Weights** (`hybrid_fusion.py`):
+- `lexical_overlap` coefficient: 0.05 → **0.08** (từ khoá trùng quan trọng hơn)
+- `wrong_domain_penalty` multiplier: 1.0 → **1.5** (phạt domain sai mạnh hơn)
+- Temporal boost: 0.03 → **0.10** cho đúng năm, 0.08 cho ≤2 năm
+
+**Article Evidence Aggregation** (`hybrid_fusion.py`):
+- Article có ≥3 chunks chất lượng cao → boost 1.2x
+
+**BM25 Bigrams Dynamic** (`retrieval_pipeline.py`):
+- `R2AI_BM25_BIGRAMS=true` cho mid/hard, false cho easy
+
+**Query Classifier** (`query_classifier.py` — new file):
+- Rule-based classification: muc_phat, thu_tuc, dinh_nghia, so_sanh, co_so_hieu
+- Inject type-specific keywords vào expanded_query
+
+**Env Vars**:
+- `CANDIDATE_K_ARTICLES=250`, `CANDIDATE_K_SPARSE=200`, `CANDIDATE_K_TITLE=30`
+- `RERANK_TOP_N=250`, `HYBRID_RERANKER_HEURISTIC_TOP_K=25`
+- `ABSOLUTE_SCORE_THRESHOLD=0.15`, `RELATIVE_SCORE_THRESHOLD=0.35`
+
 ### Full 2000 Run (previous)
 
 ## Feature Flags (env vars)
@@ -217,6 +243,14 @@ Files:
 | `R2AI_DIFF_VERYHARD_DOCS=4` | Max docs for very hard questions |
 | `R2AI_DIFF_VERYHARD_ARTS=12` | Max articles for very hard questions |
 | `R2AI_DIFF_VERYHARD_CTX=12` | Max contexts for very hard questions |
+| `CANDIDATE_K_ARTICLES=250` | Qdrant article candidates |
+| `CANDIDATE_K_SPARSE=200` | BM25 candidates |
+| `CANDIDATE_K_TITLE=30` | Exact search candidates |
+| `RERANK_TOP_N=250` | Max candidates into reranker |
+| `HYBRID_RERANKER_HEURISTIC_TOP_K=25` | Heuristic filter to top-K |
+| `ABSOLUTE_SCORE_THRESHOLD=0.15` | Min absolute score after fusion |
+| `RELATIVE_SCORE_THRESHOLD=0.35` | Min relative score vs best |
+| `QDRANT_SCORE_THRESHOLD=0.25` | Qdrant dense search min score |
 
 ## Performance Benchmarks (updated)
 
@@ -239,6 +273,7 @@ Files:
 - `src/retrieval/hybrid_fusion.py` — RRF min-max norm, difficulty-based selection, global norm
 - `src/retrieval/hybrid_reranker.py` — API circuit breaker, truncation, blend weight, cross-encoder config
 - `src/retrieval/reranker.py` — data-driven topic penalties, heuristic threshold env vars
+- `src/retrieval/query_classifier.py` — query type classification for adaptive strategy
 - `src/retrieval/bm25_retriever.py` — env-var BM25 (k1/b), cache lock, combined text fields
 - `src/retrieval/legal_exact_search.py` — LEGAL_REF_PATTERN updated
 - `src/retrieval/qdrant_retriever.py` — LEGAL_REF_PATTERN updated
