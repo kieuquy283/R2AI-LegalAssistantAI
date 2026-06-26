@@ -181,6 +181,27 @@ Files:
 - Thêm `score_threshold=0.25` vào cả `client.search()` và `query_points()` — lọc nhiễu sớm
 - Tăng `CANDIDATE_K_ARTICLES=150` → `CANDIDATE_K_ARTICLES=250`
 
+### F2 Recall Optimization (2026-06-26)
+
+**Domain Adjustment Fix** (`qdrant_retriever.py`):
+- Không còn overwrite `dense_score` và `final_score` — dùng `domain_adjusted_score` riêng
+- Fusion thấy scores gốc, không bị distort bởi labor boost/penalty
+
+**Multi-Query Dense Fix** (`retrieval_pipeline.py`):
+- Sequential path: tất cả query variants đều chạy dense search (trước đây chỉ first variant)
+
+**Loại bỏ redundant normalizations**:
+- `qdrant_retriever.py`: bỏ `_minmax_normalize_dense_scores()` — giữ raw cosine scores
+- `hybrid_fusion.py`: bỏ global min-max normalization cuối fusion
+
+**Weight tuning** (`hybrid_fusion.py`):
+- `citation_match`: 0.02 → **0.05**
+- `temporal_boost`: ×1.0 → **×1.2**
+
+**Threshold giảm** (`.env`):
+- `ABSOLUTE_SCORE_THRESHOLD`: 0.15 → **0.10**
+- `RELATIVE_SCORE_THRESHOLD`: 0.35 → **0.25**
+
 **Qdrant Dynamic HNSW** (`qdrant_retriever.py` + `retrieval_pipeline.py`):
 - `search()` nhận thêm `difficulty` param
 - HNSW ef_search và score_threshold thay đổi theo difficulty:
