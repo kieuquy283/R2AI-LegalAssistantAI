@@ -229,9 +229,9 @@ def rrf_fuse_candidates(
             normalized_rrf
             + b["lexical_overlap"] * 0.08
             + b["domain_match"] * 0.04
-            + b["citation_match"] * 0.02
+            + b["citation_match"] * 0.05
             + b["hf_priority_boost"]
-            + b["temporal_boost"]
+            + b["temporal_boost"] * 1.2
             - b["wrong_domain_penalty"] * 1.5
         )
         candidate["final_score"] = round(max(0.0, final_score), 6)
@@ -249,9 +249,6 @@ def rrf_fuse_candidates(
         }
 
     reranked.sort(key=lambda item: float(item.get("final_score") or 0.0), reverse=True)
-
-    # Global min-max normalization across fused results
-    _min_max_normalize_scores(reranked)
 
     # Article evidence aggregation: if multiple chunks of same article all score high → boost
     _aggregate_article_evidence(reranked)

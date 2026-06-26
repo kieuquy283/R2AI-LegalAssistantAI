@@ -311,10 +311,8 @@ class RetrievalPipeline:
                         print(f"[Retrieval] Parallel query '{q[:60]}' failed: {exc}")
         else:
             for q in queries:
-                if q == expanded_query:
-                    # First query is the primary one
-                    dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains, difficulty=difficulty) if self.qdrant_retriever else []
-                    all_dense.extend(dense)
+                dense = self.qdrant_retriever.search(q, preferred_domains=preferred_domains, difficulty=difficulty) if self.qdrant_retriever else []
+                all_dense.extend(dense)
                 sparse = (
                     self.bm25_retriever.search(q, top_k=self.runtime_config.candidate_k_sparse, preferred_domains=preferred_domains)
                     if self.bm25_retriever

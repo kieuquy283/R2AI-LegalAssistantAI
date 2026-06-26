@@ -304,8 +304,7 @@ def apply_domain_adjustment(query: str, candidates: list[dict[str, Any]]) -> str
         else:
             adjusted, reason = _apply_labor_adjustment_conservative(c, c["score_before_domain_adjustment"])
         c["score_after_domain_adjustment"] = round(adjusted, 6)
-        c["dense_score"] = round(adjusted, 6)
-        c["final_score"] = round(adjusted, 6)
+        c["domain_adjusted_score"] = round(adjusted, 6)
         c["domain_adjustment_reason"] = "; ".join(reason) if reason else "no adjustment"
     return detected_domain
 
@@ -524,7 +523,6 @@ class QdrantRetriever:
                 if not self._allowed_domain(payload, preferred_domains):
                     continue
                 candidates.append(self._make_candidate(level=level, hit=hit, query=query))
-        _minmax_normalize_dense_scores(candidates)
         qdrant_path_val = str(self.config.qdrant_path) if self.config.qdrant_path else ""
         qdrant_mode_val = str(getattr(self.store, "mode", "unknown"))
         for c in candidates:
