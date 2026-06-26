@@ -363,7 +363,15 @@ class QdrantRetriever:
             return False
 
     def _allowed_domain(self, payload: dict[str, Any], preferred_domains: Sequence[str] | None) -> bool:
-        return True
+        if not preferred_domains:
+            return True
+        candidate_domain = str(payload.get("domain") or "").strip().lower()
+        if not candidate_domain:
+            return True  # no domain info → don't filter out
+        for pd in preferred_domains:
+            if pd.lower() in candidate_domain or candidate_domain in pd.lower():
+                return True
+        return False
 
     def _query_collection(
         self, 
@@ -378,10 +386,18 @@ class QdrantRetriever:
         if not self._check_collection_exists(collection_name):
             return []
         
-        # Domain filter is NOT applied at Qdrant level — most collections (e.g.
-        # legal_parquet_v2) lack a 'domain' payload field, causing filter to
-        # match zero results. Post-filtering via _allowed_domain() handles this.
-        qdrant_filter = None
+        # Domain filter at Qdrant level — domain field now populated from HF dataset
+        if preferred_domains:
+            from qdrant_client.http import models as qm
+            domain_conditions = [qm.FieldCondition(
+                key="domain",
+                match=qm.MatchValue(value=pd),
+            ) for pd in preferred_domains]
+            qdrant_filter = qm.Filter(
+                should=domain_conditions,
+            )
+        else:
+            qdrant_filter = None
 
         search_params = SearchParams(hnsw_ef=hnsw_ef or self.config.hnsw_ef_search)
 
