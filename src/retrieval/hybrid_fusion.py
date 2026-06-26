@@ -177,17 +177,19 @@ def rrf_fuse_candidates(
             if query_years:
                 best_dist = min(abs(doc_year - qy) for qy in query_years)
                 if best_dist == 0:
-                    temporal_boost = 0.03
+                    temporal_boost = 0.10
                 elif best_dist == 1:
+                    temporal_boost = 0.05
+                elif best_dist <= 3:
                     temporal_boost = 0.02
             else:
                 years_since = CURRENT_YEAR - doc_year
                 if years_since <= 2:
-                    temporal_boost = 0.03
+                    temporal_boost = 0.08
                 elif years_since <= 5:
-                    temporal_boost = 0.02
+                    temporal_boost = 0.04
                 elif years_since <= 10:
-                    temporal_boost = 0.01
+                    temporal_boost = 0.02
 
         candidate["dense_rank"] = dr
         candidate["bm25_rank"] = br
@@ -225,12 +227,12 @@ def rrf_fuse_candidates(
         normalized_rrf = (candidate["rrf_sum"] - min_rrf) / rrf_range
         final_score = (
             normalized_rrf
-            + b["lexical_overlap"] * 0.05
+            + b["lexical_overlap"] * 0.08
             + b["domain_match"] * 0.04
             + b["citation_match"] * 0.02
             + b["hf_priority_boost"]
             + b["temporal_boost"]
-            - b["wrong_domain_penalty"]
+            - b["wrong_domain_penalty"] * 1.5
         )
         candidate["final_score"] = round(max(0.0, final_score), 6)
         candidate["confidence"] = candidate["final_score"]
@@ -251,7 +253,27 @@ def rrf_fuse_candidates(
     # Global min-max normalization across fused results
     _min_max_normalize_scores(reranked)
 
+    # Article evidence aggregation: if multiple chunks of same article all score high → boost
+    _aggregate_article_evidence(reranked)
+
     return reranked[: config.rerank_top_n]
+
+
+def _aggregate_article_evidence(candidates: list[dict[str, Any]]) -> None:
+    """Boost articles with multiple high-quality chunks (evidence aggregation)."""
+    art_scores: dict[str, list[float]] = {}
+    for c in candidates:
+        meta = c.get("metadata") or {}
+        art = str(meta.get("article") or c.get("article") or "").strip()
+        if art:
+            art_scores.setdefault(art, []).append(float(c.get("final_score") or 0))
+    for c in candidates:
+        meta = c.get("metadata") or {}
+        art = str(meta.get("article") or c.get("article") or "").strip()
+        scores = art_scores.get(art, [])
+        if len(scores) >= 3:
+            c["final_score"] = round(min(1.0, float(c.get("final_score") or 0) * 1.2), 6)
+            c["evidence_boost"] = True
 
 
 def fuse_candidates(
@@ -403,9 +425,9 @@ def _difficulty_limits(difficulty: str) -> dict[str, int]:
             "min_contexts": int(os.getenv("R2AI_DIFF_HARD_MIN", "2")),
         },
         "very_hard": {
-            "max_docs": int(os.getenv("R2AI_DIFF_VERYHARD_DOCS", "5")),
-            "max_articles": int(os.getenv("R2AI_DIFF_VERYHARD_ARTS", "15")),
-            "max_contexts": int(os.getenv("R2AI_DIFF_VERYHARD_CTX", "15")),
+            "max_docs": int(os.getenv("R2AI_DIFF_VERYHARD_DOCS", "4")),
+            "max_articles": int(os.getenv("R2AI_DIFF_VERYHARD_ARTS", "12")),
+            "max_contexts": int(os.getenv("R2AI_DIFF_VERYHARD_CTX", "12")),
             "min_contexts": int(os.getenv("R2AI_DIFF_VERYHARD_MIN", "3")),
         },
     }
@@ -452,8 +474,14 @@ def select_dynamic_contexts(
         level = str(candidate.get("retrieval_level") or "chunk")
         doc_id = str(candidate.get("doc_id") or candidate.get("doc_number") or "")
         article = str(candidate.get("article") or "")
+
+        # Enforce max distinct docs across all levels
+        is_new_doc = doc_id not in seen_docs
+        if is_new_doc and doc_count >= max_docs:
+            continue
+
         if level == "doc":
-            if doc_id in seen_docs or doc_count >= max_docs:
+            if doc_id in seen_docs:
                 continue
             seen_docs.add(doc_id)
             doc_count += 1
@@ -463,6 +491,9 @@ def select_dynamic_contexts(
                 continue
             seen_articles.add(key)
             article_count += 1
+            if is_new_doc:
+                seen_docs.add(doc_id)
+                doc_count += 1
         selected.append(candidate)
         if len(selected) >= max_contexts:
             break

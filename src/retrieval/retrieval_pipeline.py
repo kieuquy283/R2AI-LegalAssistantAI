@@ -16,6 +16,7 @@ from src.retrieval.hybrid_fusion import _estimate_difficulty
 from src.retrieval.hybrid_retriever import HybridRetriever
 from src.retrieval.legal_exact_search import LegalExactSearch
 from src.retrieval.qdrant_retriever import QdrantRetriever, apply_domain_adjustment
+from src.retrieval.query_classifier import classify_query
 from src.retrieval.query_expander import expand_query
 from src.retrieval.query_router import route_query
 from src.retrieval.reranker import Reranker
@@ -251,8 +252,36 @@ class RetrievalPipeline:
         adapted_rerank_n = max(50, int(self.runtime_config.rerank_top_n * depth_scale))
         print(f"[Retrieval] Difficulty={difficulty}, adapted_rerank_n={adapted_rerank_n}")
 
+        # Dynamic BM25 bigrams: enable for mid/hard to boost recall
+        if difficulty in ("mid", "hard", "very_hard"):
+            os.environ["R2AI_BM25_BIGRAMS"] = "true"
+        else:
+            os.environ["R2AI_BM25_BIGRAMS"] = "false"
+
+        # Query classification for adaptive strategy
+        query_class = classify_query(query)
+        if query_class["is_specific"]:
+            print(f"[Retrieval] Query types: {query_class['types']}")
+
         # Query Expansion
         expanded_query = expand_query(query, difficulty=difficulty)
+        if query_class["boost_exact"]:
+            # Ensure exact legal ref is preserved in expanded query
+            pass
+
+        # Type-specific keyword injection to improve BM25 recall
+        type_keywords = {
+            "muc_phat": ["mức phạt tiền", "xử phạt vi phạm hành chính", "chế tài"],
+            "thu_tuc": ["thủ tục hành chính", "trình tự thực hiện", "hồ sơ"],
+            "dinh_nghia": ["quy định", "theo quy định của pháp luật"],
+        }
+        extra_kws = []
+        for t in query_class.get("types", []):
+            extra_kws.extend(type_keywords.get(t, []))
+        if extra_kws and not expanded_query.endswith(" ".join(extra_kws)):
+            expanded_query = f"{expanded_query} {' '.join(extra_kws)}"
+            print(f"[Retrieval] Type-enriched query: -> '{expanded_query}'")
+
         if expanded_query != query:
             print(f"[Retrieval] Query expanded: '{query}' -> '{expanded_query}'")
 

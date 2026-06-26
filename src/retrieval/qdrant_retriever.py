@@ -394,6 +394,7 @@ class QdrantRetriever:
                     with_payload=True,
                     with_vectors=False,
                     search_params=search_params,
+                    score_threshold=0.25,
                 )
             )
         except Exception:
@@ -406,6 +407,7 @@ class QdrantRetriever:
                     with_payload=True,
                     with_vectors=False,
                     search_params=search_params,
+                    score_threshold=0.25,
                 )
                 return list(getattr(result, "points", []) or [])
             except Exception as exc:
