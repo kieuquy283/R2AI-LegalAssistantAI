@@ -235,6 +235,21 @@ Files:
 
 ### Full 2000 Run (previous)
 
+### Phase 2: API Weight Sweep (2026-06-26)
+
+**Kết quả sweep 20 mẫu**:
+| Weight | Coverage | Avg Ctxs | Avg Docs | Time | Ghi chú |
+|--------|----------|----------|----------|------|---------|
+| 0.0 | 100% | 3.95 | 2.40 | 9.94s | Heuristic-only, nhanh nhất |
+| 0.3 | 100% | 4.30 | 2.25 | 11.54s | |
+| 0.5 | 100% | 4.40 | 2.30 | 11.73s | Nhiều contexts nhất |
+| 0.7 | 100% | 5.00* | 5.00* | 5.79s* | Anomaly (sample issue) |
+| 1.0 | 100% | 4.00 | 2.30 | 11.63s | API-only |
+
+**Decision**: Giữ R2AI_API_WEIGHT=0.5 — all weights cho 100% coverage, 0.5 cho nhiều contexts nhất.
+Có thể tắt API hoàn toàn (weight=0.0) để tiết kiệm $ + ~1.8s/query nếu cần.
+
+
 ### Phase 1 Fixes (2026-06-26)
 
 **eval_regression.py fixed**:
